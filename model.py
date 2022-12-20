@@ -1,9 +1,9 @@
 import tensorflow as tf
 import tensorflow_probability as tfp
-from tensorflow import keras
-from keras import Model, Sequential
-from keras import layers
-from keras.applications.resnet import ResNet50
+from tensorflow.keras import Model, Sequential
+from tensorflow.keras import layers
+from tensorflow.keras.applications.resnet import ResNet50
+from easydict import EasyDict
 
 
 def nets(units=64):
@@ -31,7 +31,7 @@ def nett(units=64):
     )
 
 
-class XavierUniform(keras.initializers.GlorotUniform):
+class XavierUniform(tf.keras.initializers.GlorotUniform):
 
     def __init__(self, scale=0.01, seed=None):
         super().__init__(scale=scale, seed=seed)
@@ -75,7 +75,7 @@ class Linear(layers.Layer):
                 shape=[
                     self.units,
                 ],
-                initializer=keras.initializers.RandomUniform(-bound, bound),
+                initializer=tf.keras.initializers.RandomUniform(-bound, bound),
                 regularizer=None,
                 constraint=None,
                 dtype=self.dtype,
@@ -90,6 +90,54 @@ class Linear(layers.Layer):
         if self.use_bias:
             output += self.bias
         return output
+
+
+class RealNVP(Model):
+    """Density Estimation using Real NVP
+
+    models using Real-valued Non-Volume Preserving transformations,
+    which are powerful, stably invertible, and learnable
+    https://arxiv.org/abs/1605.08803
+    """
+    
+    def __init__(self, nets, nett, mask, prior):
+        super().__init__()
+        self.prior = prior
+        self.t = [nett() for _ in range(len(mask))] # translation
+        self.s = [nets() for _ in range(len(mask))] # scale
+        self.mask = mask
+
+    def forward_p(self, z):
+        x = z
+        for i in range(len(self.t)):
+            x_ = x * self.mask[i]
+            s = self.s[i](x_) * (1 - self.mask[i])
+            t = self.t[i](x_) * (1 - self.mask[i])
+            x = x_ + (1 - self.mask[i]) * (x * tf.math.exp(s) + t)
+        return x
+
+    def backward_p(self, x):
+        log_det_J = tf.zeros_like(x, dtype=x.dtype)
+        z = x
+        for i in reversed(range(len(self.t))):
+            z_ = self.mask[i] * z
+            s = self.s[i](z_) * (1 - self.mask[i])
+            t = self.t[i](z_) * (1 - self.mask[i])
+            z = (1 - self.mask[i]) * (z - t) * tf.math.exp(-s) + z_
+            log_det_J -= tf.math.reduce_sum(s, axis=1)
+        return z, log_det_J
+
+    def log_prob(self, x):
+        z, logp = self.backward_p(x)
+        return self.prior.log_prob(z) + logp
+
+    def sample(self, batchSize):
+        z = self.prior.sample((batchSize, 1))
+        x = self.forward_p(z)
+        return x
+
+    def call(self, x):
+        return self.log_prob(x)
 
 
 class RegressFlow(Model):
@@ -130,74 +178,22 @@ class RegressFlow(Model):
         )(self.dense_kpt_sigma(feat))
         sigma_hat = self.sigmoid_fn(sigma_hat)
         
-        # if self.is_training and mu_g is not None:
-        #     bar_mu = (mu_hat - mu_g) / sigma_hat
-        #     log_phi = self.flow_model(tf.reshape(bar_mu, [-1, 2]))
-        #     log_phi = tf.reshape(log_phi, [-1, self.num_keypoints, 1])
-
-        if self.is_training:
-            return layers.Concatenate()([mu_hat, sigma_hat])
-        score = tf.math.reduce_mean(1 - sigma_hat, axis=-1, keepdims=True)
-        return layers.Concatenate()([mu_hat, score])
+        scores = 1 - sigma_hat
+        scores = tf.math.reduce_mean(scores, -1, keepdims=True)
+        
+        if self.is_training and mu_g is not None:
+            bar_mu = (mu_hat - mu_g) / sigma_hat
+            log_phi = self.flow_model(tf.reshape(bar_mu, [-1, 2]))
+            log_phi = tf.reshape(log_phi, [-1, self.num_keypoints, 1])
             
-            
-
-class RealNVP(Model):
-    """Density Estimation using Real NVP
-
-    models using Real-valued Non-Volume Preserving transformations,
-    which are powerful, stably invertible, and learnable
-    https://arxiv.org/abs/1605.08803
-    """
-    
-    def __init__(self, nets, nett, mask, prior):
-        super().__init__()
-        self.prior = prior
-        self.t = [nett() for _ in range(len(mask))] # translation
-        self.s = [nets() for _ in range(len(mask))] # scale
-
-    def f(self, x):
-        """
-        transformation of
-            x(image) -> z(latent variable)
-        """
-        pass
-
-    def g(self, z):
-        """
-        inverse transformation of
-            z(latent variable) -> x(image)
-        """
-        pass
-
-    def forward_p(self, z):
-        x = z
-        for i in range(len(self.t)):
-            x_ = x * self.mask[i]
-            s = self.s[i](x_) * (1 - self.mask[i])
-            t = self.t[i](x_) * (1 - self.mask[i])
-            x = x_ + (1 - self.mask[i]) * (x * tf.math.exp(s) + t)
-        return x
-
-    def backward_p(self, x):
-        log_det_J = tf.zeros_like(x, dtype=x.dtype)
-        z = x
-        for i in reversed(range(len(self.t))):
-            z_ = self.mask[i] * z
-            s = self.s[i](z_) * (1 - self.mask[i])
-            t = self.t[i](z_) * (1 - self.mask[i])
-            z = (1 - self.mask[i]) * (z - t) * tf.math.exp(-s) + z_
-            log_det_J -= tf.math.reduce_sum(s, axis=1)
-        return z, log_det_J
-
-    def log_prob(self, x):
-        z, logp = self.backward_p(x)
-        return self.prior.log_prob(z) + logp
-
-    def sample(self, batchSize):
-        z = self.prior.sample((batchSize, 1))
-        x = self.forward_p(z)
-        return x
-
-    def call(self, x):
-        return self.log_prob(x)
+            nf_loss = tf.math.log(sigma_hat) - log_phi
+        else:
+            nf_loss = None
+        
+        output = EasyDict(
+            mu_hat=mu_hat,
+            sigma_hat=sigma_hat,
+            maxvals=tf.cast(scores, tf.float32),
+            nf_loss=nf_loss
+        )
+        return output
