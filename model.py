@@ -3,7 +3,6 @@ import tensorflow_probability as tfp
 from tensorflow.keras import Model, Sequential
 from tensorflow.keras import layers
 from tensorflow.keras.applications.resnet import ResNet50
-from easydict import EasyDict
 
 
 def nets(units=64):
@@ -34,7 +33,7 @@ def nett(units=64):
 class XavierUniform(tf.keras.initializers.GlorotUniform):
 
     def __init__(self, scale=0.01, seed=None):
-        super().__init__(scale=scale, seed=seed)
+        super().__init__()
 
     def get_config(self):
         return {
@@ -56,6 +55,7 @@ class Linear(layers.Layer):
         self.dense = layers.Dense(
             units, use_bias=use_bias, kernel_initializer=XavierUniform()
         )
+        self.units = units
 
     def build(self, input_shape):
         last_dim = tf.compat.dimension_value(input_shape[-1])
@@ -69,7 +69,7 @@ class Linear(layers.Layer):
             trainable=True,
         )
         if self.use_bias:
-            bound = 1 / tf.math.sqrt(last_dim)
+            bound = 1 / tf.math.sqrt(tf.cast(last_dim, tf.float32))
             self.bias = self.add_weight(
                 "bias",
                 shape=[
@@ -117,7 +117,7 @@ class RealNVP(Model):
         return x
 
     def backward_p(self, x):
-        log_det_J = tf.zeros_like(x, dtype=x.dtype)
+        log_det_J = tf.zeros_like(x[..., 0], dtype=x.dtype)
         z = x
         for i in reversed(range(len(self.t))):
             z_ = self.mask[i] * z
@@ -159,41 +159,71 @@ class RegressFlow(Model):
         self.dense_kpt_mu = Linear(num_keypoints * 2)
         self.dense_kpt_sigma = Linear(num_keypoints * 2, use_norm=False)
 
-        masks = tf.tile(
-            tf.convert_to_tensor([[0, 1], [1, 0]], dtype=tf.float32),
-            multiples=[3, 1]
-        )
-        prior = tfp.distributions.MultivariateNormalFullCovariance(tf.zeros(2), tf.eye(2))
-        self.flow_model = RealNVP(nets, nett, masks, prior)
 
-    def call(self, inputs, mu_g=None):
+    def call(self, inputs):
         feat = self.backbone(inputs)
         feat = self.gap(feat)
         
-        mu_hat = layers.Reshape(
-            [inputs.shape[0], self.num_keypoints, 2]
-        )(self.dense_kpt_mu(feat))
-        sigma_hat = layers.Reshape(
-            [inputs.shape[0], self.num_keypoints, 2]
-        )(self.dense_kpt_sigma(feat))
+        mu_hat = layers.Reshape([self.num_keypoints, 2])(self.dense_kpt_mu(feat))
+        sigma_hat = layers.Reshape([self.num_keypoints, 2])(self.dense_kpt_sigma(feat))
         sigma_hat = self.sigmoid_fn(sigma_hat)
         
-        scores = 1 - sigma_hat
-        scores = tf.math.reduce_mean(scores, -1, keepdims=True)
-        
-        if self.is_training and mu_g is not None:
-            bar_mu = (mu_hat - mu_g) / sigma_hat
-            log_phi = self.flow_model(tf.reshape(bar_mu, [-1, 2]))
-            log_phi = tf.reshape(log_phi, [-1, self.num_keypoints, 1])
-            
-            nf_loss = tf.math.log(sigma_hat) - log_phi
+        if self.is_training:
+            return layers.Concatenate()([mu_hat, sigma_hat]) # (B, K, 4)
         else:
-            nf_loss = None
+            scores = 1 - sigma_hat
+            scores = tf.math.reduce_mean(scores, -1, keepdims=True)
+            return layers.Concatenate()([mu_hat, scores]) # (B, K, 3)
+
+
+# class RegressFlow(Model):
+
+#     def __init__(
+#         self,
+#         num_keypoints=17,
+#         input_shape=[256, 192, 3],
+#         sigmoid_fn=layers.Activation('sigmoid'),
+#         is_training=False
+#     ):
+#         super().__init__()
+#         self.num_keypoints = num_keypoints
+#         self.sigmoid_fn = sigmoid_fn
+#         self.is_training = is_training
         
-        output = EasyDict(
-            mu_hat=mu_hat,
-            sigma_hat=sigma_hat,
-            maxvals=tf.cast(scores, tf.float32),
-            nf_loss=nf_loss
-        )
-        return output
+#         self.backbone = ResNet50(include_top=False, input_shape=input_shape)
+#         self.gap = layers.GlobalAveragePooling2D()
+#         self.dense_kpt_mu = Linear(num_keypoints * 2)
+#         self.dense_kpt_sigma = Linear(num_keypoints * 2, use_norm=False)
+
+#         masks = tf.tile(
+#             tf.convert_to_tensor([[0, 1], [1, 0]], dtype=tf.float32),
+#             multiples=[3, 1]
+#         )
+#         prior = tfp.distributions.MultivariateNormalFullCovariance(tf.zeros(2), tf.eye(2))
+#         self.flow_model = RealNVP(nets, nett, masks, prior)
+
+#     def call(self, inputs, mu_g=None):
+#         feat = self.backbone(inputs)
+#         feat = self.gap(feat)
+        
+#         mu_hat = layers.Reshape(
+#             [inputs.shape[0], self.num_keypoints, 2]
+#         )(self.dense_kpt_mu(feat))
+#         sigma_hat = layers.Reshape(
+#             [inputs.shape[0], self.num_keypoints, 2]
+#         )(self.dense_kpt_sigma(feat))
+#         sigma_hat = self.sigmoid_fn(sigma_hat)
+        
+#         scores = 1 - sigma_hat
+#         scores = tf.math.reduce_mean(scores, -1, keepdims=True)
+        
+#         if self.is_training and mu_g is not None:
+#             bar_mu = (mu_hat - mu_g) / sigma_hat
+#             log_phi = self.flow_model(tf.reshape(bar_mu, [-1, 2]))
+#             log_phi = tf.reshape(log_phi, [-1, self.num_keypoints, 1])
+            
+#             nf_loss = tf.math.log(sigma_hat) - log_phi
+#         else:
+#             nf_loss = None
+        
+#         return nf_loss, mu_hat, sigma_hat

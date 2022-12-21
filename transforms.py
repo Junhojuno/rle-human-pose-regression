@@ -129,10 +129,7 @@ def preprocess(
             (xy[:, 0] >= 0) &
             (xy[:, 0] < input_shape[1]) &
             (xy[:, 1] >= 0) &
-            (xy[:, 1] < input_shape[0])), tf.float32)
-    num_kpt_vis = tf.math.reduce_sum(tf.cast(vis > 0, tf.int32))
-    
-    center = get_center_keypoints(xy, vis)
+            (xy[:, 1] < input_shape[0])), tf.float32)    
     kp = tf.concat([xy, tf.expand_dims(vis, axis=1)], axis=1)
 
     img = tf.cast(img, tf.float32)
@@ -141,12 +138,11 @@ def preprocess(
         lambda: normalize_image(img, means, stds),
         lambda: img
     )
-    center = tf.cond(
-        tf.math.greater(num_kpt_vis, 0),
-        lambda: center,
-        lambda: tf.fill([2,], tf.cast(-1, tf.float32))
-    ) # NOTE: if no object in inputs, center is set to [-1, -1].
-    return img, center, kp
+    
+    # target, target_weight, _ = generate_target(kp, input_shape)
+    # return img, target, target_weight
+    target = generate_target(kp, input_shape)
+    return img, target
 
 
 def normalize_image(image, means, stds):
@@ -220,5 +216,37 @@ def horizontal_flip(img, center, kp, flip_kp_indices):
     return img, center, kp
 
 
-def generate_target():
-    pass
+def generate_target(keypoints, input_shape):
+    target_visible = keypoints[:, -1]
+    
+    scale = tf.convert_to_tensor([input_shape[1], input_shape[0]], keypoints.dtype)
+    target = keypoints[:, :2] / scale - 0.5
+    
+    # masking values not existing in [-0.5 ~ 0.5]
+    target_visible *= tf.cast((
+            (target[:, 0] <= 0.5) &
+            (target[:, 0] >= -0.5) &
+            (target[:, 1] <= 0.5) &
+            (target[:, 1] >= -0.5)), tf.float32)
+    
+    target = tf.concat([target, tf.expand_dims(target_visible, axis=1)], axis=-1)
+    return target
+
+
+# def generate_target(keypoints, input_shape):
+#     target_visible = keypoints[:, 2:]
+#     target_weight = tf.concat([target_visible, target_visible], axis=-1)
+    
+#     scale = tf.convert_to_tensor([input_shape[1], input_shape[0]], keypoints.dtype)
+#     target = keypoints[:, :2] / scale - 0.5
+    
+#     # masking values not existing in [-0.5 ~ 0.5]
+#     target_visible *= tf.cast((
+#             (target[:, 0] <= 0.5) &
+#             (target[:, 0] >= -0.5) &
+#             (target[:, 1] <= 0.5) &
+#             (target[:, 1] >= -0.5)), tf.float32)
+    
+#     target = tf.reshape(target, [-1,])
+#     target_weight = tf.reshape(target_weight, [-1,])
+#     return target, target_weight, target_visible
