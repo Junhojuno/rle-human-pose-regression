@@ -112,7 +112,7 @@ class Trainer:
             val_loss = val_loss / val_n_batches
             total_time = time.time() - start_time
             
-            if self.args.train.scheduler.name == 'no_scheduler':
+            if self.args.train.scheduler.name != 'no_scheduler':
                 current_lr = self.optimizer.lr(self.optimizer.iterations).numpy()
             else:
                 current_lr = self.optimizer.lr.numpy()
