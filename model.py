@@ -161,9 +161,9 @@ class RLEModel(Model):
         self.backbone = ResNet50(include_top=False, input_shape=input_shape)
         self.gap = layers.GlobalAveragePooling2D()
         self.dense_kpt_mu = Linear(num_keypoints * 2)
-        # self.dense_kpt_sigma = Linear(num_keypoints * 2, use_norm=False)
+        self.dense_kpt_sigma = Linear(num_keypoints * 2, use_norm=False)
         # self.dense_kpt_mu = layers.Dense(num_keypoints * 2)
-        self.dense_kpt_sigma = layers.Dense(num_keypoints * 2)
+        # self.dense_kpt_sigma = layers.Dense(num_keypoints * 2)
 
         masks = tf.tile(
             tf.convert_to_tensor([[0, 1], [1, 0]], dtype=tf.float32),

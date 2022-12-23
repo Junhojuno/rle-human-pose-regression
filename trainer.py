@@ -26,14 +26,18 @@ class Trainer:
                 
         self.model = model
         self.loss_object = RLELoss()
-        self.optimizer = Adam(learning_rate=self.args.train.lr)
+        lr_scheduler = MultiStepLR(
+            args.train.lr,
+            lr_steps=[self.n_train_steps * epoch for epoch in args.train.scheduler.lr_epochs],
+            lr_rate=args.train.scheduler.lr_rate
+        )
+        self.optimizer = Adam(learning_rate=lr_scheduler)
         
         self.logger = logger
         self.strategy = strategy
         
         self.model.summary(print_fn=self.logger.info)
-        # self.logger.info(f'===={self.args.model.name}_{self.args.model.model_type}====')
-        # self.logger.info(f'==== Backbone: {self.args.model.backbone}')
+        
         self.logger.info(f'==== Backbone: ResNet50')
         self.logger.info(f'==== Input : {self.args.dataset.input_shape[0]}x{self.args.dataset.input_shape[1]}')
         self.logger.info(f'==== Batch size: {args.train.batch_size * strategy.num_replicas_in_sync}')
@@ -108,11 +112,10 @@ class Trainer:
             val_loss = val_loss / val_n_batches
             total_time = time.time() - start_time
             
-            # if self.args.train.scheduler:
-            #     current_lr = self.optimizer.lr(self.optimizer.iterations).numpy()
-            # else:
-            #     current_lr = self.optimizer.lr.numpy()
-            current_lr = self.optimizer.lr.numpy()
+            if self.args.train.scheduler.name == 'no_scheduler':
+                current_lr = self.optimizer.lr(self.optimizer.iterations).numpy()
+            else:
+                current_lr = self.optimizer.lr.numpy()
             
             self.logger.info(
                 'Epoch: {:03d} - {}s[{}s] | Train Loss: {:.4f} | Train Acc: {:.4f} | Val Loss: {:.4f} | Val Acc: {:.4f} | LR: {}'.format(
