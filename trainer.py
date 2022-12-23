@@ -1,11 +1,11 @@
 import os
-# import gc
 import time
 import tensorflow as tf
 from tensorflow.keras.optimizers import Adam
 # from tensorflow.keras.optimizers.schedules import ExponentialDecay, CosineDecayRestarts
-from losses import rle_loss, RLELoss
-from metric import calc_coord_accuracy
+from losses import RLELoss
+from metrics import calc_coord_accuracy
+from scheduler import MultiStepLR
 
 
 class Trainer:
@@ -43,7 +43,7 @@ class Trainer:
         images, targets = inputs
         
         with tf.GradientTape() as tape:
-            pred = self.model(images, training=True)
+            pred = self.model(images, mu_g=targets[..., :2], training=True)  # pred: EasyDict
             loss = self.loss_object(targets, pred)
             loss = tf.math.reduce_mean(loss) * (1. / self.strategy.num_replicas_in_sync)
             loss += (sum(self.model.losses) * 1. / self.strategy.num_replicas_in_sync)
@@ -58,7 +58,7 @@ class Trainer:
     def val_step(self, inputs):
         images, targets = inputs
 
-        pred = self.model(images, training=False)
+        pred = self.model(images, mu_g=targets[..., :2], training=False)  # pred: EasyDict
         loss = self.loss_object(targets, pred)
         loss = tf.math.reduce_mean(loss) * (1. / self.strategy.num_replicas_in_sync)
         acc = calc_coord_accuracy(targets, pred, self.args.dataset.output_shape) * (1. / self.strategy.num_replicas_in_sync)
@@ -108,10 +108,11 @@ class Trainer:
             val_loss = val_loss / val_n_batches
             total_time = time.time() - start_time
             
-            if self.args.train.scheduler:
-                current_lr = self.optimizer.lr(self.optimizer.iterations).numpy()
-            else:
-                current_lr = self.optimizer.lr.numpy()
+            # if self.args.train.scheduler:
+            #     current_lr = self.optimizer.lr(self.optimizer.iterations).numpy()
+            # else:
+            #     current_lr = self.optimizer.lr.numpy()
+            current_lr = self.optimizer.lr.numpy()
             
             self.logger.info(
                 'Epoch: {:03d} - {}s[{}s] | Train Loss: {:.4f} | Train Acc: {:.4f} | Val Loss: {:.4f} | Val Acc: {:.4f} | LR: {}'.format(

@@ -3,6 +3,7 @@ from pathlib import Path
 import numpy as np
 import tensorflow as tf
 import logging
+from collections import OrderedDict
 
 import hydra
 from hydra.utils import get_original_cwd
@@ -10,12 +11,11 @@ from omegaconf import DictConfig, OmegaConf
 
 import wandb
 
-from model import RegressFlow
+from model import RLEModel
 from trainer import Trainer
-# from core.eval.simple_evaluator import SimpleEvaluator
 from dataset import load_dataset
-
 from utils import get_available_gpu, to_dict, to_namedtuple
+from evaluate import evaluate_coco, print_name_value
 
 logger = logging.getLogger(__name__)
 
@@ -69,20 +69,6 @@ def main(cfg: DictConfig) -> None:
     train_dist_ds = strategy.experimental_distribute_dataset(train_ds)
     val_dist_ds = strategy.experimental_distribute_dataset(val_ds)
 
-    if args.eval.use_eval:
-        # eval_ds = load_pose_dataset(
-        #     str(cwd.parent / args.eval.eval_pattern),
-        #     args.eval.batch_size * strategy.num_replicas_in_sync,
-        #     args,
-        #     mode='val',
-        #     use_aug=False,
-        #     use_transform=True,
-        #     use_album_aug=False
-        # )
-        eval_ds = None
-    else:
-        eval_ds = None
-
     weight_path = None
     if args.train.use_pretrained:
         weight_path = str(cwd / args.train.pretrained_weights)
@@ -109,12 +95,14 @@ def main(cfg: DictConfig) -> None:
         run.define_metric("lr", step_metric="epoch")
 
     with strategy.scope():
-        model = RegressFlow(
+        model = RLEModel(
             args.dataset.num_keypoints,
             args.dataset.input_shape,
             is_training=True
         )
         model.build([None, *args.dataset.input_shape])
+        if weight_path is not None:
+            model.load_weights(weight_path)
         # train
         trainer = Trainer(args, model, logger, strategy)
         trainer.custom_loop(
@@ -122,30 +110,47 @@ def main(cfg: DictConfig) -> None:
             val_dist_ds,
             run
         )
-    # # evaluation
-    # if eval_ds is not None:
-    #     model = build_baseline(
-    #         args.dataset.input_shape,
-    #         args.dataset.num_keypoints,
-    #         args.model.backbone,
-    #         weight_path=trainer.checkpoint_prefix,  # load best model
-    #         is_training=True  # this doesn't mean that weights are updated.
-    #     )  # model will return heatmaps
-    #     if args.eval.type == 'weelo':
-    #         evaluator = SimpleEvaluator(
-    #             args.dataset.output_shape,
-    #             args.dataset.num_keypoints
-    #         )  # initialize in every eval
-    #         eval_results = evaluator.evaluate(model, eval_ds)
-    #         eval_table = wandb.Table(
-    #             data=[eval_results],
-    #             columns=args.eval.cols
-    #         )
-    #     elif args.eval.type == 'coco':
-    #         # TODO: evaluation with COCO
-    #         pass
+    # evaluation
+    if args.eval.use_eval:
+        model = RLEModel(
+            args.dataset.num_keypoints,
+            args.dataset.input_shape,
+            is_training=False
+        )  # model will return heatmaps
+        model.load_weights(trainer.checkpoint_prefix)
+        stats = evaluate_coco(
+            model,
+            str(cwd.parent / args.eval.eval_pattern),
+            args.dataset.num_keypoints,
+            args.dataset.input_shape,
+            str(cwd.parent / args.eval.coco_json)
+        )
+        stats_names = [
+            "AP",
+            "Ap .5",
+            "AP .75",
+            "AP (M)",
+            "AP (L)",
+            "AR",
+            "AR .5",
+            "AR .75",
+            "AR (M)",
+            "AR (L)",
+        ]
 
-    #     run.log({'eval': eval_table})
+        eval_table = wandb.Table(
+            data=[stats],
+            columns=stats_names
+        )
+        if args.wandb.use:
+            run.log({'eval': eval_table})
+        else:
+            info_str = []
+            for i, name in enumerate(stats_names):
+                info_str.append((name, stats[i]))
+
+            results = OrderedDict(info_str)
+            print_name_value(results)
 
 
 if __name__ == '__main__':

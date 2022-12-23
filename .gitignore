@@ -1,8 +1,18 @@
+# samples
+samples/
+
+# models
+models/
+
 # test
 test*.py
+test*.*
 
 # yaml
 *.yaml
+
+# results
+results/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

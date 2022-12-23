@@ -2,7 +2,7 @@ import tensorflow as tf
 
 
 def calc_coord_accuracy(y_true, y_pred, heatmap_shape, thr: int = 0.5):
-    pred_mu = y_pred[..., :2]
+    pred_mu = y_pred.mu
     scale = tf.convert_to_tensor([heatmap_shape[1], heatmap_shape[0]], pred_mu.dtype)
     pred_mu = (pred_mu + 0.5) * scale
 
@@ -13,7 +13,7 @@ def calc_coord_accuracy(y_true, y_pred, heatmap_shape, thr: int = 0.5):
     gt_mu = gt_mu * gt_mask
     
     # calculate distance
-    norm = tf.ones([tf.shape(gt_mu)[0], 1, 2], dtype=scale.dtype) / scale / 10.
+    norm = tf.ones([tf.shape(gt_mu)[0], 1, 2], dtype=scale.dtype) * scale / 10.
     dists, valid_mask, n_valids = cal_dist(gt_mu, pred_mu, norm)
     n_corrects = tf.math.reduce_sum(
         tf.cast(dists < thr, tf.float32) * valid_mask
@@ -25,7 +25,7 @@ def calc_coord_accuracy(y_true, y_pred, heatmap_shape, thr: int = 0.5):
 def cal_dist(target, pred, norm):
     valid_mask = tf.math.reduce_all(target > 1, axis=-1)
     dists = tf.math.reduce_euclidean_norm(
-        (pred / norm) - (target - norm),
+        (pred / norm) - (target / norm),
         axis=-1
     ) # (B, K)
     dists = tf.where(valid_mask, dists, -tf.ones_like(dists))
