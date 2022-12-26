@@ -129,6 +129,19 @@ class Trainer:
                     float(current_lr)
                 )
             )
+            
+            if wandb_run:
+                # write on wandb server
+                wandb_run.log(
+                    {
+                        'loss/train': float(train_loss),
+                        'loss/val': float(val_loss),
+                        'acc/train': float(train_acc),
+                        'acc/val': float(val_acc),
+                        'lr': float(current_lr),
+                        'epoch': int(epoch + 1)
+                    }
+                )
 
             # Terminate when NaN loss
             if tf.math.is_nan(train_loss) or tf.math.is_nan(val_loss):

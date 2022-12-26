@@ -43,7 +43,7 @@ def suppress_stdout():
             sys.stdout = old_stdout
 
 
-def print_name_value(name_value, full_arch_name='alyce_movenet', print_fn=print):
+def print_name_value(name_value, full_arch_name='ResNet50_rle', print_fn=print):
     """print out markdown format performance table
     Args:
     name_value (dict): dictionary of metric name and value

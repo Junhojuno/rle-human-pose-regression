@@ -7,10 +7,10 @@ python train.py \
     augmentation.half_body_prob=0.3 \
     augmentation.rotation_factor=45 \
     train.n_gpus=1 \
-    train.batch_size=64 \
+    train.batch_size=32 \
     train.lr=0.001 \
     train.n_epochs=270 \
-    eval.use_eval=false \
-    wandb.use=false \
+    eval.use_eval=true \
+    wandb.use=true \
     wandb.project=rle_pretraining \
     wandb.subtitle=basic_coco
