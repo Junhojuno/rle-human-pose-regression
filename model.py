@@ -201,39 +201,3 @@ class RLEModel(Model):
             nf_loss=nf_loss
         )
         return output
-
-
-# class RegressFlow(Model):
-
-#     def __init__(
-#         self,
-#         num_keypoints=17,
-#         input_shape=[256, 192, 3],
-#         sigmoid_fn=layers.Activation('sigmoid'),
-#         is_training=False
-#     ):
-#         super().__init__()
-#         self.num_keypoints = num_keypoints
-#         self.sigmoid_fn = sigmoid_fn
-#         self.is_training = is_training
-        
-#         self.backbone = ResNet50(include_top=False, input_shape=input_shape)
-#         self.gap = layers.GlobalAveragePooling2D()
-#         self.dense_kpt_mu = Linear(num_keypoints * 2)
-#         self.dense_kpt_sigma = Linear(num_keypoints * 2, use_norm=False)
-
-
-#     def call(self, inputs):
-#         feat = self.backbone(inputs)
-#         feat = self.gap(feat)
-        
-#         mu_hat = layers.Reshape([self.num_keypoints, 2])(self.dense_kpt_mu(feat))
-#         sigma_hat = layers.Reshape([self.num_keypoints, 2])(self.dense_kpt_sigma(feat))
-#         sigma_hat = self.sigmoid_fn(sigma_hat)
-        
-#         if self.is_training:
-#             return layers.Concatenate()([mu_hat, sigma_hat]) # (B, K, 4)
-#         else:
-#             scores = 1 - sigma_hat
-#             scores = tf.math.reduce_mean(scores, -1, keepdims=True)
-#             return layers.Concatenate()([mu_hat, scores]) # (B, K, 3)

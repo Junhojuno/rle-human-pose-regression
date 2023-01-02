@@ -231,22 +231,3 @@ def generate_target(keypoints, input_shape):
     
     target = tf.concat([target, tf.expand_dims(target_visible, axis=1)], axis=-1)
     return target
-
-
-# def generate_target(keypoints, input_shape):
-#     target_visible = keypoints[:, 2:]
-#     target_weight = tf.concat([target_visible, target_visible], axis=-1)
-    
-#     scale = tf.convert_to_tensor([input_shape[1], input_shape[0]], keypoints.dtype)
-#     target = keypoints[:, :2] / scale - 0.5
-    
-#     # masking values not existing in [-0.5 ~ 0.5]
-#     target_visible *= tf.cast((
-#             (target[:, 0] <= 0.5) &
-#             (target[:, 0] >= -0.5) &
-#             (target[:, 1] <= 0.5) &
-#             (target[:, 1] >= -0.5)), tf.float32)
-    
-#     target = tf.reshape(target, [-1,])
-#     target_weight = tf.reshape(target_weight, [-1,])
-#     return target, target_weight, target_visible

@@ -29,6 +29,9 @@ def define_argparser():
     parser.add_argument('--single_coco',
                         action='store_true',
                         help='single person eval or not')
+    parser.add_argument('--flip_test',
+                        action='store_true',
+                        help='if using flip test or not')
     return parser.parse_args()
 
 
@@ -136,12 +139,28 @@ def preprocess_for_cocoeval(img_id, img, bbox, kp, input_shape):
     return img_id, img, M
 
 
-def flip():
-    pass
+def flip(image):
+    return tf.image.flip_left_right(image)
 
 
-def flip_outputs(outputs):
-    pass
+def flip_outputs(
+    outputs: tf.Tensor,
+    input_width: int,
+    joint_pairs: List = [[1, 2], [3, 4], [5, 6], [7, 8], [9, 10], [11, 12], [13, 14], [15, 16]]
+):
+    pred_jts, pred_scores = outputs.mu.numpy(), outputs.maxvals.numpy()
+    pred_jts[:, :, 0] = - pred_jts[:, :, 0] - 1 / input_width
+    
+    for pair in joint_pairs:
+        dim0, dim1 = pair
+        inv_pair = [dim1, dim0]
+        pred_jts[:, pair, :] = pred_jts[:, inv_pair, :]
+        pred_scores[:, pair, :] = pred_scores[:, inv_pair, :]
+    
+    outputs.mu = pred_jts
+    outputs.maxvals = pred_scores
+    
+    return outputs
 
 
 def evaluate_coco(
@@ -149,7 +168,8 @@ def evaluate_coco(
     file_pattern: str,
     num_keypoints: int = 17,
     input_shape: Union[List, Tuple] = [192, 192, 3],
-    coco_path: str = ''
+    coco_path: str = '',
+    flip_test: bool = False
 ):
     with suppress_stdout():
         coco = COCO(coco_path)
@@ -163,6 +183,17 @@ def evaluate_coco(
         Ms = Ms.numpy()
         
         pred = model(imgs, training=False)
+        
+        if flip_test:
+            imgs_fliped = flip(imgs)
+            pred_fliped = model(imgs_fliped, training=False)
+            pred_fliped = flip_outputs(pred_fliped, input_shape[1])
+            for k in pred.keys():
+                if isinstance(pred[k], list):
+                    continue
+                if pred[k] is not None:
+                    pred[k] = (pred[k] + pred_fliped[k]) / 2
+        
         pred_kpts = np.concatenate([pred.mu.numpy(), pred.maxvals.numpy()], axis=-1)
         kp_scores = pred.maxvals.numpy()[..., 0].copy()
         
@@ -221,7 +252,8 @@ if __name__ == '__main__':
         file_pattern,
         17,
         [256, 192, 3],
-        coco_path
+        coco_path,
+        flip_test=args.flip_test
     )
     stats_names = [
       "AP",
