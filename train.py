@@ -138,11 +138,11 @@ def main(cfg: DictConfig) -> None:
             "AR (L)",
         ]
 
-        eval_table = wandb.Table(
-            data=[stats],
-            columns=stats_names
-        )
         if args.wandb.use:
+            eval_table = wandb.Table(
+                data=[stats],
+                columns=stats_names
+            )
             run.log({'eval': eval_table})
         else:
             info_str = []
