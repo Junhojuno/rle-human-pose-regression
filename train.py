@@ -11,10 +11,10 @@ from omegaconf import DictConfig, OmegaConf
 
 import wandb
 
-from model import RLEModel
-from trainer import Trainer
-from dataset import load_dataset
-from utils import get_available_gpu, to_dict, to_namedtuple
+from src.model import RLEModel
+from src.trainer import Trainer
+from src.dataset import load_dataset
+from src.utils import get_available_gpu, to_dict, to_namedtuple
 from evaluate import evaluate_coco, print_name_value
 
 logger = logging.getLogger(__name__)

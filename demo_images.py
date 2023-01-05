@@ -8,9 +8,9 @@ import tensorflow as tf
 import cv2
 import numpy as np
 
-from transforms import parse_example, preprocess
-from model import RLEModel
-from utils import visualize_with_RGB as visualize
+from src.transforms import parse_example, preprocess
+from src.model import RLEModel
+from src.utils import visualize_with_RGB as visualize
 
 
 def define_argparser():
