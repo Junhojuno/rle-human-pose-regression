@@ -139,4 +139,3 @@ def visualize_with_RGB(image, keypoints, threshold=0.3, alpha=0.5):
                 )
     image = cv2.addWeighted(image, alpha, image, 1 - alpha, 0)
     return image
-

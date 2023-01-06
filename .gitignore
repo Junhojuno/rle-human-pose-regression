@@ -1,3 +1,7 @@
+# jpeg / mp4
+*.jpg
+*.mp4
+
 # samples
 samples/
 

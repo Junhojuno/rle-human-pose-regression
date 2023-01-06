@@ -98,6 +98,7 @@ def main(cfg: DictConfig) -> None:
         model = RLEModel(
             args.dataset.num_keypoints,
             args.dataset.input_shape,
+            args.model.backbone,
             is_training=True
         )
         model.build([None, *args.dataset.input_shape])
@@ -115,6 +116,7 @@ def main(cfg: DictConfig) -> None:
         model = RLEModel(
             args.dataset.num_keypoints,
             args.dataset.input_shape,
+            args.model.backbone,
             is_training=False
         )  # model will return heatmaps
         model.load_weights(trainer.checkpoint_prefix)

@@ -3,7 +3,9 @@ import tensorflow_probability as tfp
 from tensorflow.keras import Model, Sequential, Input
 from tensorflow.keras import layers
 from tensorflow.keras.applications.resnet import ResNet50
+from tensorflow.keras.applications.mobilenet_v2 import MobileNetV2
 from easydict import EasyDict
+from typing import List
 
 
 def nets(units=64):
@@ -143,6 +145,16 @@ class RealNVP(Model):
         return self.log_prob(x)
 
 
+def build_backbone(backbone_type: str = 'mobilenetv2', input_shape: List = [256, 192, 3]):
+    if backbone_type == 'resnet50':
+        backbone = ResNet50(include_top=False, input_shape=input_shape)
+    elif backbone_type == 'mobilenetv2':
+        backbone = MobileNetV2(include_top=False, input_shape=input_shape)
+    else:
+        raise ValueError(f'{backbone_type} is wrong. check backbone_type')
+    return backbone
+
+
 class RLEModel(Model):
     """Regression Model with Residual Log-likelihood"""
 
@@ -150,6 +162,7 @@ class RLEModel(Model):
         self,
         num_keypoints=17,
         input_shape=[256, 192, 3],
+        backbone_type='resnet50',
         sigmoid_fn=layers.Activation('sigmoid'),
         is_training=False
     ):
@@ -158,7 +171,7 @@ class RLEModel(Model):
         self.sigmoid_fn = sigmoid_fn
         self.is_training = is_training
         
-        self.backbone = ResNet50(include_top=False, input_shape=input_shape)
+        self.backbone = build_backbone(backbone_type, input_shape)
         self.gap = layers.GlobalAveragePooling2D()
         self.dense_kpt_mu = Linear(num_keypoints * 2)
         self.dense_kpt_sigma = Linear(num_keypoints * 2, use_norm=False)
