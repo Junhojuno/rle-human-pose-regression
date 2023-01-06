@@ -1,7 +1,7 @@
 from typing import Dict
 import tensorflow as tf
 
-from transforms import (
+from src.transforms import (
     parse_example,
     preprocess
 )

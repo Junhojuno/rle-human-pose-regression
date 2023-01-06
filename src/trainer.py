@@ -3,9 +3,9 @@ import time
 import tensorflow as tf
 from tensorflow.keras.optimizers import Adam
 # from tensorflow.keras.optimizers.schedules import ExponentialDecay, CosineDecayRestarts
-from losses import RLELoss
-from metrics import calc_coord_accuracy
-from scheduler import MultiStepLR
+from src.losses import RLELoss
+from src.metrics import calc_coord_accuracy
+from src.scheduler import MultiStepLR
 
 
 class Trainer:
@@ -38,7 +38,7 @@ class Trainer:
         
         self.model.summary(print_fn=self.logger.info)
         
-        self.logger.info(f'==== Backbone: ResNet50')
+        self.logger.info(f'==== Backbone: {args.model.backbone}')
         self.logger.info(f'==== Input : {self.args.dataset.input_shape[0]}x{self.args.dataset.input_shape[1]}')
         self.logger.info(f'==== Batch size: {args.train.batch_size * strategy.num_replicas_in_sync}')
         self.logger.info(f'==== Dataset: {self.args.dataset.name}')

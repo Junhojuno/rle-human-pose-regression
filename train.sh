@@ -2,6 +2,7 @@
 python train.py \
     dataset=only_coco \
     scheduler=multisteplr \
+    model.backbone=mobilenetv2 \
     dataset.sigma=2.0 \
     augmentation.scale_factor=0.25 \
     augmentation.half_body_prob=0.3 \

@@ -13,8 +13,8 @@ from collections import OrderedDict
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 
-from model import RLEModel
-from transforms import transform, normalize_image
+from src.model import RLEModel
+from src.transforms import transform, normalize_image
 
 
 def define_argparser():
