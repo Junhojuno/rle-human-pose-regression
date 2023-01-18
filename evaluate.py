@@ -243,6 +243,7 @@ if __name__ == '__main__':
     model = RLEModel(
         17,
         [256, 192, 3],
+        args.backbone,
         is_training=False
     )
     model.load_weights(args.weights)

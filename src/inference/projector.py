@@ -4,7 +4,7 @@ import time
 import numpy as np
 from typing import List
 
-from src.tracker.misc import (
+from src.inference.misc import (
     transform_preds,
     crop_image_to_square,
     crop_with_bbox,
@@ -104,6 +104,10 @@ class PoseProjector(Projector):
             output_size=(self.input_w, self.input_h)
         )
         # convert bgr channel oredering to rgb
+        cv2.imwrite(
+            f'/home/alyce/alycehealth/human-pose-regression-baseline/model_inputs/{self.frames_processed:05d}.jpg',
+            image
+        )
         model_input = image[:, :, ::-1].astype('float')
         model_input /= 255.
         model_input -= [[means]]

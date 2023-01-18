@@ -5,7 +5,7 @@ import argparse
 from typing import List
 
 from src.model import RLEModel
-from src.tracker.projector import PoseProjector
+from src.inference.projector import PoseProjector
 
 
 def define_argparser():
