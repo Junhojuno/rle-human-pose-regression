@@ -1,11 +1,12 @@
+"""RLE model"""
+from typing import List
+from easydict import EasyDict
 import tensorflow as tf
 import tensorflow_probability as tfp
-from tensorflow.keras import Model, Sequential, Input
+from tensorflow.keras import Model, Sequential
 from tensorflow.keras import layers
 from tensorflow.keras.applications.resnet import ResNet50
 from tensorflow.keras.applications.mobilenet_v2 import MobileNetV2
-from easydict import EasyDict
-from typing import List
 
 
 def nets(units=64):
