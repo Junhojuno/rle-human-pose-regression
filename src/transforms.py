@@ -138,9 +138,6 @@ def preprocess(
         lambda: normalize_image(img, means, stds),
         lambda: img
     )
-    
-    # target, target_weight, _ = generate_target(kp, input_shape)
-    # return img, target, target_weight
     target = generate_target(kp, input_shape)
     return img, target
 
