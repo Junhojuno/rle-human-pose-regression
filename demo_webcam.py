@@ -2,7 +2,7 @@ import os
 import cv2
 
 from src.model import RLEModel
-from src.inference.inference import Tracker
+from src.inference.custom import Tracker
 
 
 def run_webcam_demo():
@@ -46,4 +46,4 @@ def run_webcam_demo():
 
 
 if __name__ == "__main__":
-  run_webcam_demo()
+    run_webcam_demo()
