@@ -1,15 +1,15 @@
 """RLE model"""
-from typing import List
+from typing import List, Optional, Callable
 from easydict import EasyDict
 import tensorflow as tf
 import tensorflow_probability as tfp
-from tensorflow.keras import Model, Sequential
+from tensorflow.keras import Model, Sequential, Input
 from tensorflow.keras import layers
 from tensorflow.keras.applications.resnet import ResNet50
 from tensorflow.keras.applications.mobilenet_v2 import MobileNetV2
 
 
-def nets(units=64):
+def nets(units: Optional[int] = 64):
     return Sequential(
         [
             layers.Dense(units),
@@ -22,7 +22,7 @@ def nets(units=64):
     )
 
 
-def nett(units=64):
+def nett(units: Optional[int] = 64):
     return Sequential(
         [
             layers.Dense(units),
@@ -36,7 +36,11 @@ def nett(units=64):
 
 class XavierUniform(tf.keras.initializers.GlorotUniform):
 
-    def __init__(self, scale=0.01, seed=None):
+    def __init__(
+        self,
+        scale: Optional[float] = 0.01,
+        seed: Optional[int] = None
+    ):
         super().__init__()
         self.scale = scale
         self.seed = seed
@@ -46,7 +50,7 @@ class XavierUniform(tf.keras.initializers.GlorotUniform):
             "scale": self.scale,
             "seed": self.seed
         }
-    
+
 
 class Linear(layers.Layer):
     """layer for mu & sigma of kpt coordinates
@@ -54,7 +58,13 @@ class Linear(layers.Layer):
     normalize 사용 & kernel, bias 따로 계산하는 특징이 있음
     """
 
-    def __init__(self, units, use_bias=True, use_norm=True, name='linear'):
+    def __init__(
+        self,
+        units: int,
+        use_bias: Optional[bool] = True,
+        use_norm: Optional[bool] = True,
+        name: Optional[str] = 'linear'
+    ):
         super().__init__(name=name)
         self.use_bias = use_bias
         self.use_norm = use_norm
@@ -106,11 +116,17 @@ class RealNVP(Model):
     https://arxiv.org/abs/1605.08803
     """
     
-    def __init__(self, nets, nett, mask, prior):
+    def __init__(
+        self,
+        nets: Callable,
+        nett: Callable,
+        mask: tf.Tensor,
+        prior: tfp.distributions.MultivariateNormalDiag
+    ):
         super().__init__()
         self.prior = prior
-        self.t = [nett() for _ in range(len(mask))] # translation
-        self.s = [nets() for _ in range(len(mask))] # scale
+        self.t = [nett() for _ in range(len(mask))]  # translation
+        self.s = [nets() for _ in range(len(mask))]  # scale
         self.mask = mask
 
     def forward_p(self, z):
@@ -143,10 +159,13 @@ class RealNVP(Model):
         return x
 
     def call(self, x):
-        return self.log_prob(x)
+        return self.loOpt
 
 
-def build_backbone(backbone_type: str = 'mobilenetv2', input_shape: List = [256, 192, 3]):
+def build_backbone(
+    backbone_type: Optional[str] = 'mobilenetv2',
+    input_shape: Optional[List] = [256, 192, 3]
+) -> Model:
     if backbone_type == 'resnet50':
         backbone = ResNet50(include_top=False, input_shape=input_shape)
     elif backbone_type == 'mobilenetv2':
@@ -161,16 +180,15 @@ class RLEModel(Model):
 
     def __init__(
         self,
-        num_keypoints=17,
-        input_shape=[256, 192, 3],
-        backbone_type='resnet50',
-        sigmoid_fn=layers.Activation('sigmoid'),
-        is_training=False
+        num_keypoints: Optional[int] = 17,
+        input_shape: Optional[List] = [256, 192, 3],
+        backbone_type: Optional[str] = 'resnet50',
+        sigmoid_fn: Optional[Callable] = layers.Activation('sigmoid'),
+        is_training: Optional[bool] = False
     ):
         super().__init__()
         self.num_keypoints = num_keypoints
         self.sigmoid_fn = sigmoid_fn
-        self.is_training = is_training
         
         self.backbone = build_backbone(backbone_type, input_shape)
         self.gap = layers.GlobalAveragePooling2D()
@@ -179,20 +197,30 @@ class RLEModel(Model):
         # self.dense_kpt_mu = layers.Dense(num_keypoints * 2)
         # self.dense_kpt_sigma = layers.Dense(num_keypoints * 2)
 
-        masks = tf.tile(
-            tf.convert_to_tensor([[0, 1], [1, 0]], dtype=tf.float32),
-            multiples=[3, 1]
-        )
-        prior = tfp.distributions.MultivariateNormalDiag(tf.zeros(2), tf.ones(2))
-        self.flow_model = RealNVP(nets, nett, masks, prior)
-        self.flow_model.build([None, 2])
+        if is_training:
+            masks = tf.tile(
+                tf.convert_to_tensor([[0, 1], [1, 0]], dtype=tf.float32),
+                multiples=[3, 1]
+            )
+            prior = tfp.distributions.MultivariateNormalDiag(
+                tf.zeros(2), tf.ones(2)
+            )
+            self.flow_model = RealNVP(nets, nett, masks, prior)
+            self.flow_model.build([None, 2])
+            
+        self.is_training = is_training
 
-    def call(self, inputs, mu_g=None):
+    def call(self, inputs, mu_g=None) -> EasyDict:
         feat = self.backbone(inputs)
         feat = self.gap(feat)
         
-        mu_hat = layers.Reshape([self.num_keypoints, 2])(self.dense_kpt_mu(feat))
-        sigma_hat = layers.Reshape([self.num_keypoints, 2])(self.dense_kpt_sigma(feat))
+        # heads
+        mu_hat = layers.Reshape(
+            [self.num_keypoints, 2]
+        )(self.dense_kpt_mu(feat))
+        sigma_hat = layers.Reshape(
+            [self.num_keypoints, 2]
+        )(self.dense_kpt_sigma(feat))
         sigma_hat = self.sigmoid_fn(sigma_hat)
         
         scores = 1 - sigma_hat
