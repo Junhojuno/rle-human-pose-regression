@@ -65,7 +65,6 @@ class Tracker:
         input_image /= 255.
         input_image -= [[self.MEANS]]
         input_image /= [[self.STDS]]
-        
         return np.expand_dims(input_image, 0)
     
     def predict(self, inputs):
