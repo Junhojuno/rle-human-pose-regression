@@ -5,8 +5,13 @@ import argparse
 from tqdm import tqdm
 from typing import List
 import tensorflow as tf
-import cv2
 import numpy as np
+
+if __package__ is None:
+    import sys
+    from os import path
+    print(path.dirname(path.dirname(path.abspath(__file__))))
+    sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
 
 from src.transforms import parse_example, preprocess
 from src.model import RLEModel

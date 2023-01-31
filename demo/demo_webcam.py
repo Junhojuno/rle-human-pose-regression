@@ -1,6 +1,12 @@
 import os
 import cv2
 
+if __package__ is None:
+    import sys
+    from os import path
+    print(path.dirname(path.dirname(path.abspath(__file__))))
+    sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
+
 from src.model import RLEModel
 from src.inference.custom import Tracker
 
