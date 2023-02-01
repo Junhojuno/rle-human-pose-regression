@@ -3,6 +3,8 @@ settings.json
 
 # legacy
 legacy/
+*test*
+*backup*
 
 # jpeg / mp4
 *.jpg
