@@ -23,30 +23,30 @@ def load_dataset(
 
     if mode == 'train':
         ds = ds.shuffle(buffer_size=30000, reshuffle_each_iteration=True)
-    
+
     ds = ds.map(
-        lambda record: parse_example(record, num_keypoints=args.dataset.num_keypoints),
+        lambda record: parse_example(record, args.DATASET.COMMON.K),
         num_parallel_calls=AUTOTUNE
     )
     ds = ds.map(
         lambda image, bbox, keypoints: preprocess(
             image, bbox, keypoints,
-            use_image_norm=args.dataset.use_norm,
-            means=args.dataset.means,
-            stds=args.dataset.stds,
-            scale_factor=args.augmentation.scale_factor,
-            rotation_prob=args.augmentation.rotation_prob,
-            rotation_factor=args.augmentation.rotation_factor,
-            flip_prob=args.augmentation.flip_prob,
-            flip_kp_indices=args.augmentation.kp_flip,
-            half_body_prob=args.augmentation.half_body_prob,
-            half_body_min_kp=args.augmentation.half_body_min_kp,
-            kpt_upper=args.augmentation.kp_upper,
-            input_shape=args.dataset.input_shape,
+            use_image_norm=args.DATASET.COMMON.IMAGE_NORM,
+            means=args.DATASET.COMMON.MEANS,
+            stds=args.DATASET.COMMON.STDS,
+            scale_factor=args.AUG.SCALE_FACTOR,
+            rotation_prob=args.AUG.ROT_PROB,
+            rotation_factor=args.AUG.ROT_FACTOR,
+            flip_prob=args.AUG.FLIP_PROB,
+            flip_kp_indices=args.AUG.KP_FLIP,
+            half_body_prob=args.AUG.HALF_BODY_PROB,
+            half_body_min_kp=args.AUG.HALF_BODY_MIN_KP,
+            kpt_upper=args.AUG.KP_UPPER,
+            input_shape=args.DATASET.COMMON.INPUT_SHAPE,
             use_aug=use_aug,
         ),
         num_parallel_calls=AUTOTUNE
     )
-    ds = ds.batch(batch_size, drop_remainder=True, 
+    ds = ds.batch(batch_size, drop_remainder=True,
                   num_parallel_calls=AUTOTUNE).prefetch(AUTOTUNE)
     return ds
