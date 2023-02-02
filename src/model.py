@@ -3,10 +3,10 @@ from typing import List, Optional, Callable
 from easydict import EasyDict
 import tensorflow as tf
 import tensorflow_probability as tfp
-from tensorflow.keras import Model, Sequential, Input
+from tensorflow.keras import Model, Sequential
 from tensorflow.keras import layers
-from tensorflow.keras.applications.resnet import ResNet50
-from tensorflow.keras.applications.mobilenet_v2 import MobileNetV2
+
+from src.backbone import build_backbone
 
 
 def nets(units: Optional[int] = 64):
@@ -61,9 +61,9 @@ class Linear(layers.Layer):
     def __init__(
         self,
         units: int,
-        use_bias: Optional[bool] = True,
-        use_norm: Optional[bool] = True,
-        name: Optional[str] = 'linear'
+        use_bias: bool = True,
+        use_norm: bool = True,
+        name: str = 'linear'
     ):
         super().__init__(name=name)
         self.use_bias = use_bias
@@ -115,7 +115,7 @@ class RealNVP(Model):
     which are powerful, stably invertible, and learnable
     https://arxiv.org/abs/1605.08803
     """
-    
+
     def __init__(
         self,
         nets: Callable,
@@ -162,34 +162,21 @@ class RealNVP(Model):
         return self.loOpt
 
 
-def build_backbone(
-    backbone_type: Optional[str] = 'mobilenetv2',
-    input_shape: Optional[List] = [256, 192, 3]
-) -> Model:
-    if backbone_type == 'resnet50':
-        backbone = ResNet50(include_top=False, input_shape=input_shape)
-    elif backbone_type == 'mobilenetv2':
-        backbone = MobileNetV2(include_top=False, input_shape=input_shape)
-    else:
-        raise ValueError(f'{backbone_type} is wrong. check backbone_type')
-    return backbone
-
-
 class RLEModel(Model):
     """Regression Model with Residual Log-likelihood"""
 
     def __init__(
         self,
-        num_keypoints: Optional[int] = 17,
-        input_shape: Optional[List] = [256, 192, 3],
-        backbone_type: Optional[str] = 'resnet50',
-        sigmoid_fn: Optional[Callable] = layers.Activation('sigmoid'),
-        is_training: Optional[bool] = False
+        num_keypoints: int = 17,
+        input_shape: List = [256, 192, 3],
+        backbone_type: str = 'resnet50',
+        sigmoid_fn: Callable = layers.Activation('sigmoid'),
+        is_training: bool = False
     ):
         super().__init__()
         self.num_keypoints = num_keypoints
         self.sigmoid_fn = sigmoid_fn
-        
+
         self.backbone = build_backbone(backbone_type, input_shape)
         self.gap = layers.GlobalAveragePooling2D()
         self.dense_kpt_mu = Linear(num_keypoints * 2)
@@ -207,13 +194,13 @@ class RLEModel(Model):
             )
             self.flow_model = RealNVP(nets, nett, masks, prior)
             self.flow_model.build([None, 2])
-            
+
         self.is_training = is_training
 
-    def call(self, inputs, mu_g=None) -> EasyDict:
+    def call(self, inputs, mu_g: Optional[tf.Tensor] = None) -> EasyDict:
         feat = self.backbone(inputs)
         feat = self.gap(feat)
-        
+
         # heads
         mu_hat = layers.Reshape(
             [self.num_keypoints, 2]
@@ -222,20 +209,20 @@ class RLEModel(Model):
             [self.num_keypoints, 2]
         )(self.dense_kpt_sigma(feat))
         sigma_hat = self.sigmoid_fn(sigma_hat)
-        
+
         scores = 1 - sigma_hat
         scores = tf.math.reduce_mean(scores, -1, keepdims=True)
-        
+
         if self.is_training and mu_g is not None:
             # log_phi means logG_phi(bar_mu) in the paper.
             bar_mu = (mu_hat - mu_g) / sigma_hat
             log_phi = self.flow_model(tf.reshape(bar_mu, [-1, 2]))
             log_phi = tf.reshape(log_phi, [-1, self.num_keypoints, 1])
-            
+
             nf_loss = tf.math.log(sigma_hat) - log_phi
         else:
             nf_loss = None
-        
+
         output = EasyDict(
             mu=mu_hat,
             sigma=sigma_hat,
