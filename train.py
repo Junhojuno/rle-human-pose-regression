@@ -109,6 +109,14 @@ def main():
             is_training=True
         )
         model.build([None, *args.DATASET.COMMON.INPUT_SHAPE])
+        model.summary(print_fn=logger.info)
+        logger.info(
+            f'===={args.MODEL.NAME}====\n'
+            f'==== Backbone: {args.MODEL.BACKBONE}'
+            f'==== Input : {args.DATASET.COMMON.INPUT_SHAPE}'
+            f'==== Batch size: {args.TRAIN.BATCH_SIZE * strategy.num_replicas_in_sync}'
+            f'==== Dataset: {args.DATASET.NAME}'
+        )
         # train
         trainer = Trainer(args, model, logger, strategy)
         trainer.custom_loop(
