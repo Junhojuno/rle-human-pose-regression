@@ -34,7 +34,7 @@ python train.py -c config/256x192_res50_regress-flow.yaml
 ## TO-DO
 - [x] hydra 대신 일반 yaml 파일로 학습 파이프라인 수정
 - [x] tfrecord 만드는 코드 추가
-- [ ] 현재 모델들의 #params, GFLOPs 확인하여 기록
+- [x] 현재 모델들의 #params, GFLOPs 확인하여 기록
 - [ ] 모델이 고정되었을때 성능을 높일 수 있는 방법 모색
 - [ ] 동일한 성능 재현을 위한 seed 고정 방법 찾아보기
 - [ ] pflayer 기반 ResNet 구성
