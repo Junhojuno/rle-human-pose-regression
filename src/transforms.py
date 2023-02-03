@@ -3,6 +3,8 @@ from typing import List, Tuple
 import tensorflow as tf
 import tensorflow_addons as tfa
 
+from src.aug import apply_albumentaion
+
 
 def parse_example(record, num_keypoints):
     feature_description = {
@@ -72,11 +74,14 @@ def preprocess(
     rotation_prob: float = 0.6,
     rotation_factor: int = 40,
     flip_prob: float = 0.5,
-    flip_kp_indices: List = [0, 2, 1, 4, 3, 6, 5, 8, 7, 10, 9, 12, 11, 14, 13, 16, 15],
+    flip_kp_indices: List = [
+        0, 2, 1, 4, 3, 6, 5, 8, 7, 10, 9, 12, 11, 14, 13, 16, 15
+    ],
     half_body_prob: float = 1.0,
     half_body_min_kp: int = 8,
     kpt_upper: List = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
     input_shape: List = [192, 192, 3],
+    album: bool = False,
     use_aug: bool = True,
 ):
     kp = tf.cast(kp, tf.float32)
@@ -149,6 +154,12 @@ def preprocess(
         tf.float32
     )
     kp = tf.concat([xy, tf.expand_dims(vis, axis=1)], axis=1)
+
+    img = tf.cond(
+        tf.math.logical_and(use_aug, album),
+        lambda: apply_albumentaion(img),
+        lambda: img
+    )
 
     img = tf.cast(img, tf.float32)
     img = tf.cond(
@@ -264,5 +275,8 @@ def generate_target(keypoints, input_shape: List):
             (target[:, 1] <= 0.5) &
             (target[:, 1] >= -0.5)), tf.float32)
 
-    target = tf.concat([target, tf.expand_dims(target_visible, axis=1)], axis=-1)
+    target = tf.concat(
+        [target, tf.expand_dims(target_visible, axis=1)],
+        axis=-1
+    )
     return target

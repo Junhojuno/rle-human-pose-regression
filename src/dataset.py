@@ -43,6 +43,7 @@ def load_dataset(
             half_body_min_kp=args.AUG.HALF_BODY_MIN_KP,
             kpt_upper=args.AUG.KP_UPPER,
             input_shape=args.DATASET.COMMON.INPUT_SHAPE,
+            album=args.AUG.ALBUM,
             use_aug=use_aug,
         ),
         num_parallel_calls=AUTOTUNE

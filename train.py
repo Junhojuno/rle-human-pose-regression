@@ -12,7 +12,7 @@ import wandb
 from src.model import RLEModel
 from src.trainer import Trainer
 from src.dataset import load_dataset
-from src.utils import parse_yaml
+from src.utils import parse_yaml, get_flops
 from evaluate import evaluate_coco, print_name_value
 
 logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ def main():
     cwd = Path('./').resolve()
     args.WANDB.NAME = \
         '{dataset}/{exp_title}/{model}/\
-            {backbone}/{bs}_lr{lr}_s{sigma}_sf_{sf}_r{rot}'\
+            {backbone}/bs{bs}_lr{lr}_s{sigma}_sf_{sf}_r{rot}'\
         .format(
             dataset=args.DATASET.NAME,
             exp_title=args.WANDB.SUBTITLE,
@@ -49,7 +49,7 @@ def main():
             backbone=args.MODEL.BACKBONE,
             bs=args.TRAIN.BATCH_SIZE,
             lr=args.TRAIN.LR,
-            sigma=args.DATASET.SIGMA,
+            sigma=args.DATASET.COMMON.SIGMA,
             sf=args.AUG.SCALE_FACTOR,
             rot=args.AUG.ROT_FACTOR
         )
@@ -66,14 +66,14 @@ def main():
     np.random.seed(0)
 
     train_ds = load_dataset(
-        str(cwd.parent / args.DATASET.TRAIN.PATTERN),
+        str(cwd.parent / 'datasets' / args.DATASET.NAME / args.DATASET.TRAIN.PATTERN),
         args.TRAIN.BATCH_SIZE * strategy.num_replicas_in_sync,
         args,
         'train',
         use_aug=True
     )
     val_ds = load_dataset(
-        str(cwd.parent / args.DATASET.VAL.PATTERN),
+        str(cwd.parent / 'datasets' / args.DATASET.NAME / args.DATASET.VAL.PATTERN),
         args.VAL.BATCH_SIZE * strategy.num_replicas_in_sync,
         args,
         'val',
@@ -109,13 +109,15 @@ def main():
             is_training=True
         )
         model.build([None, *args.DATASET.COMMON.INPUT_SHAPE])
-        model.summary(print_fn=logger.info)
+        # model.summary(print_fn=logger.info)
+        flops = get_flops(model, args.DATASET.COMMON.INPUT_SHAPE)
         logger.info(
             f'===={args.MODEL.NAME}====\n'
             f'==== Backbone: {args.MODEL.BACKBONE}'
             f'==== Input : {args.DATASET.COMMON.INPUT_SHAPE}'
             f'==== Batch size: {args.TRAIN.BATCH_SIZE * strategy.num_replicas_in_sync}'
-            f'==== Dataset: {args.DATASET.NAME}'
+            f'==== Dataset: {args.DATASET.NAME}',
+            f'==== GFLOPs: {flops}'
         )
         # train
         trainer = Trainer(args, model, logger, strategy)

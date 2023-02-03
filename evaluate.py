@@ -46,7 +46,9 @@ def suppress_stdout():
             sys.stdout = old_stdout
 
 
-def print_name_value(name_value, full_arch_name='ResNet50_rle', print_fn=print):
+def print_name_value(
+    name_value, full_arch_name='ResNet50_rle', print_fn=print
+):
     """print out markdown format performance table
     Args:
     name_value (dict): dictionary of metric name and value
@@ -57,7 +59,11 @@ def print_name_value(name_value, full_arch_name='ResNet50_rle', print_fn=print):
     values = name_value.values()
     num_values = len(name_value)
 
-    print_fn("| Arch " + " ".join(["| {}".format(name) for name in names]) + " |")
+    print_fn(
+        "| Arch "
+        + " ".join(["| {}".format(name) for name in names])
+        + " |"
+    )
     print_fn("|---" * (num_values + 1) + "|")
 
     if len(full_arch_name) > 15:
@@ -71,7 +77,12 @@ def print_name_value(name_value, full_arch_name='ResNet50_rle', print_fn=print):
     )
 
 
-def load_dataset(file_pattern, batch_size, num_keypoints=17, input_shape=[192, 192, 3]):
+def load_dataset(
+    file_pattern: str,
+    batch_size: int,
+    num_keypoints: int = 17,
+    input_shape: List = [192, 192, 3]
+):
     AUTOTUNE = tf.data.AUTOTUNE
     ds = tf.data.Dataset.list_files(file_pattern, shuffle=True)
     ds = ds.interleave(tf.data.TFRecordDataset,
@@ -83,13 +94,17 @@ def load_dataset(file_pattern, batch_size, num_keypoints=17, input_shape=[192, 1
         lambda record: parse_example_for_cocoeval(record, num_keypoints),
         num_parallel_calls=AUTOTUNE
     )
-    
+
     ds = ds.map(
-        lambda img_id, image, bbox, keypoints: preprocess_for_cocoeval(img_id, image, bbox, keypoints,
-                                                                       input_shape=input_shape),
+        lambda img_id, image, bbox, keypoints: preprocess_for_cocoeval(
+            img_id,
+            image,
+            bbox,
+            keypoints,
+            input_shape=input_shape),
         num_parallel_calls=AUTOTUNE
     )
-    ds = ds.batch(batch_size, drop_remainder=True, 
+    ds = ds.batch(batch_size, drop_remainder=True,
                   num_parallel_calls=AUTOTUNE).prefetch(AUTOTUNE)
     return ds
 
@@ -111,7 +126,7 @@ def parse_example_for_cocoeval(record, num_keypoints):
 
 def preprocess_for_cocoeval(img_id, img, bbox, kp, input_shape):
     kp = tf.cast(kp, tf.float32)
-    
+
     x, y, w, h = bbox[0], bbox[1], bbox[2], bbox[3]
     bbox_center = tf.cast([x + w / 2., y + h / 2.], tf.float32)
 
@@ -121,13 +136,13 @@ def preprocess_for_cocoeval(img_id, img, bbox, kp, input_shape):
         lambda: w * 1.0 / aspect_ratio,
         lambda: h
     )
-    scale = (h * 1.25) / input_shape[0] # scale with bbox
+    scale = (h * 1.25) / input_shape[0]  # scale with bbox
     angle = 0.
-    
+
     # transform to the object's center
     img, M = transform(img, scale, angle, bbox_center, input_shape[:2])
     img = tf.cast(img, tf.float32)
-    
+
     use_image_norm = True
     means = [0.485, 0.456, 0.406]
     stds = [0.229, 0.224, 0.225]
@@ -146,20 +161,22 @@ def flip(image):
 def flip_outputs(
     outputs: tf.Tensor,
     input_width: int,
-    joint_pairs: List = [[1, 2], [3, 4], [5, 6], [7, 8], [9, 10], [11, 12], [13, 14], [15, 16]]
+    joint_pairs: List = [
+        [1, 2], [3, 4], [5, 6], [7, 8], [9, 10], [11, 12], [13, 14], [15, 16]
+    ]
 ):
     pred_jts, pred_scores = outputs.mu.numpy(), outputs.maxvals.numpy()
     pred_jts[:, :, 0] = - pred_jts[:, :, 0] - 1 / input_width
-    
+
     for pair in joint_pairs:
         dim0, dim1 = pair
         inv_pair = [dim1, dim0]
         pred_jts[:, pair, :] = pred_jts[:, inv_pair, :]
         pred_scores[:, pair, :] = pred_scores[:, inv_pair, :]
-    
+
     outputs.mu = pred_jts
     outputs.maxvals = pred_scores
-    
+
     return outputs
 
 
@@ -173,7 +190,7 @@ def evaluate_coco(
 ):
     with suppress_stdout():
         coco = COCO(coco_path)
-    
+
     batch_size = 16
     ds = load_dataset(file_pattern, batch_size, num_keypoints, input_shape)
 
@@ -181,9 +198,9 @@ def evaluate_coco(
     for img_ids, imgs, Ms in ds:
         img_ids = img_ids.numpy()
         Ms = Ms.numpy()
-        
+
         pred = model(imgs, training=False)
-        
+
         if flip_test:
             imgs_fliped = flip(imgs)
             pred_fliped = model(imgs_fliped, training=False)
@@ -193,33 +210,40 @@ def evaluate_coco(
                     continue
                 if pred[k] is not None:
                     pred[k] = (pred[k] + pred_fliped[k]) / 2
-        
-        pred_kpts = np.concatenate([pred.mu.numpy(), pred.maxvals.numpy()], axis=-1)
+
+        pred_kpts = np.concatenate(
+            [pred.mu.numpy(), pred.maxvals.numpy()],
+            axis=-1
+        )
         kp_scores = pred.maxvals.numpy()[..., 0].copy()
-        
+
         pred_kpts[:, :, 0] = (pred_kpts[:, :, 0] + 0.5) * input_shape[1]
         pred_kpts[:, :, 1] = (pred_kpts[:, :, 1] + 0.5) * input_shape[0]
-        
+
         rescored_score = np.zeros((batch_size,))
         for i in range(batch_size):
             M_inv = cv2.invertAffineTransform(Ms[i])
-            pred_kpts[i, :, :2] = np.matmul(M_inv[:, :2], pred_kpts[i, :, :2].T).T + M_inv[:, 2].T
+            pred_kpts[i, :, :2] = \
+                np.matmul(
+                    M_inv[:, :2], pred_kpts[i, :, :2].T
+                ).T \
+                + M_inv[:, 2].T
 
             # rescore
             score_mask = kp_scores[i] > 0.2  # score threshold in validation
             if np.sum(score_mask) > 0:
                 rescored_score[i] = np.mean(kp_scores[i][score_mask])
-                
+
             results.append(dict(image_id=int(img_ids[i]),
                                 category_id=1,
                                 keypoints=pred_kpts[i].reshape(-1).tolist(),
                                 score=float(rescored_score[i])))
-    
+
     result_path = '{}/{}_{}.json'.format('models', 'rle_model', 'val')
     os.makedirs('./models', exist_ok=True)
     with open(result_path, 'w') as f:
         json.dump(results, f)
-    
+
     with suppress_stdout():
         result = coco.loadRes(result_path)
         cocoEval = COCOeval(coco, result, iouType='keypoints')
@@ -234,12 +258,18 @@ if __name__ == '__main__':
     args = define_argparser()
     cwd = Path('.').resolve()
     if args.single_coco:
-        file_pattern = str(cwd.parent / 'datasets/only_coco_single_pose/val/tfrecords/*.tfrecords')
+        file_pattern = str(
+            cwd.parent / 'datasets/only_coco_single_pose/val/tfrecords/*.tfrecords'
+        )
     else:
-        file_pattern =  str(cwd.parent / 'datasets/only_coco/val/tfrecords/*.tfrecords')
-    
-    coco_path = str(cwd.parent / 'datasets/coco_dataset/annotations/person_keypoints_val2017.json')
-    
+        file_pattern = str(
+            cwd.parent / 'datasets/only_coco/val/tfrecords/*.tfrecords'
+        )
+
+    coco_path = str(
+        cwd.parent / 'datasets/coco_dataset/annotations/person_keypoints_val2017.json'
+    )
+
     model = RLEModel(
         17,
         [256, 192, 3],
@@ -247,7 +277,7 @@ if __name__ == '__main__':
         is_training=False
     )
     model.load_weights(args.weights)
-    
+
     stats = evaluate_coco(
         model,
         file_pattern,

@@ -2,7 +2,7 @@ from pycocotools.coco import COCO
 import os
 import numpy as np
 import tensorflow as tf
-from typing import List, Optional
+from typing import List, Optional, Dict
 from pathlib import Path
 
 
@@ -36,7 +36,7 @@ def serialize_example(annot):
 def exist_person_in_an_image(
     coco: COCO,
     img_id: int,
-):
+) -> bool:
     anns = coco.loadAnns(coco.getAnnIds(imgIds=[img_id]))
     return len(anns) > 0
 
@@ -57,7 +57,30 @@ def check_n_keypoints_in_bbox(keypoints, bbox):
     return np.sum(inners)
 
 
-def load_mscoco(coco_path: str) -> List:
+def get_filename(anno: Dict) -> str:
+    filename = '{:012d}.jpg'.format(anno['image_id'])
+    return filename
+
+
+def reformat(
+    anno: Dict,
+    root: str,
+    mode: str
+) -> Dict:
+    """서로 다른 데이터셋을 하나의 포맷으로 통일하기 위한 처리"""
+    filename = get_filename(anno)
+    new_anno = {
+        'img_id': anno['image_id'],
+        'image_file': os.path.join(root, 'images', f'{mode}2017', filename),
+        'bbox': anno['bbox'],
+        'keypoints': anno['keypoints'],
+        'num_keypoints': anno['num_keypoints'],
+    }
+    return new_anno
+
+
+def load_mscoco(coco_dir: Path, mode: str) -> List:
+    coco_path = str(coco_dir / f'annotations/person_keypoints_{mode}2017.json')
     coco = COCO(coco_path)
     img_ids = list(
         filter(
@@ -91,25 +114,27 @@ def load_mscoco(coco_path: str) -> List:
                 y2 = np.min((image_height - 1, y1 + np.max((0, h - 1))))
                 if ann['area'] > 0 and (x2 > x1 or y2 > y1):
                     ann['bbox'] = [x1, y1, x2 - x1 + 1, y2 - y1 + 1]
-                    annots.append(ann)
+                    annots.append(reformat(ann, coco_dir, mode))
     return annots
 
 
 def convert_to_tfrecord(
-    coco_path: str,
+    coco_dir: Path,
     mode: str,
     save_dir: str,
     shard_size: Optional[int] = 1024
 ):
-    save_dir = os.path.join(save_dir, mode, 'tfrecords')
+    save_dir = os.path.join(save_dir, mode)
     os.makedirs(save_dir, exist_ok=True)
-    coco_annots = load_mscoco(coco_path)
+
+    coco_annots = load_mscoco(coco_dir, mode)
+    N = len(coco_annots)
 
     i = 0
     shard_count = 0
     while i < len(coco_annots):
         record_path = os.path.join(
-            save_dir, f'{mode}_{shard_count:04d}.tfrecord'
+            save_dir, f'{mode}_{N}_{shard_count:04d}.tfrecord'
         )
         with tf.io.TFRecordWriter(record_path) as writer:
             for j in range(shard_size):
@@ -128,26 +153,26 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        'cwd',
+        '--cwd', '-d',
         default='./',
+        required=False,
         help='current working directory'
     )
     args = parser.parse_args()
 
     cwd = Path(args.cwd).resolve()
-    coco_path = cwd.parent / 'datasets' / 'mscoco'
-    save_dir = coco_path / 'tfrecords'
+    coco_dir = cwd.parent / 'datasets' / 'mscoco'
+    save_dir = coco_dir / 'tfrecords'
 
-    # training set
     convert_to_tfrecord(
-        str(coco_path / 'annotations/person_keypoints_train2017.json'),
+        coco_dir,
         mode='train',
         save_dir=save_dir,
         shard_size=1024
     )
     # validation set
     convert_to_tfrecord(
-        str(coco_path / 'annotations/person_keypoints_val2017.json'),
+        coco_dir,
         mode='val',
         save_dir=save_dir,
         shard_size=1024

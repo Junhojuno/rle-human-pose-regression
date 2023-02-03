@@ -38,21 +38,6 @@ class Trainer:
         self.logger = logger
         self.strategy = strategy
 
-        input_shape_text = '{}x{}'.format(
-            args.DATASET.COMMON.INPUT_SHAPE[0],
-            args.DATASET.COMMON.INPUT_SHAPE[1]
-        )
-        self.model.summary(print_fn=self.logger.info)
-        self.logger.info(f'==== Model: {args.MODEL.NAME}')
-        self.logger.info(f'==== Backbone: {args.MODEL.BACKBONE}')
-        self.logger.info(f'==== Input : {input_shape_text}')
-        self.logger.info(
-            '==== Batch size: {}'.format(
-                args.TRAIN.BATCH_SIZE * strategy.num_replicas_in_sync
-            )
-        )
-        self.logger.info(f'==== Dataset: {args.DATASET.NAME}')
-
     def train_step(self, inputs):
         images, targets = inputs
 

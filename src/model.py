@@ -159,7 +159,7 @@ class RealNVP(Model):
         return x
 
     def call(self, x):
-        return self.loOpt
+        return self.log_prob(x)
 
 
 class RLEModel(Model):
