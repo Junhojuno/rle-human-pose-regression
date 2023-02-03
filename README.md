@@ -3,13 +3,13 @@ The main goal of this repository is to rewrite the human pose regression with a 
 
 ## Specification
 this can be used on mobile / edge devices?!
-| Model | flip test | #Params | GFLOPs | AP | AP50 | AP75 |
+| Model | flip test | #Params(M) | GFLOPs | AP | AP50 | AP75 |
 | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: |
-| Benchmark<br>(ResNet-50) | O | 23.6 | 4.0G | 0.713 | 0.889 | 0.783 |
-| ResNet-50 | X | ... | ... | 0.682 | 0.892 | 0.756 |
-| ResNet-50 | O | ... | ... | 0.695 | 0.903 | 0.769 |
-| MobileNetV2 | X | ... | ... | 0.598 | 0.852 | 0.661 |
-| MobileNetV2 | O | ... | ... | 0.613 | 0.862 | 0.682 |
+| Benchmark<br>(ResNet-50) | O | 23.6 | 4.0 | 0.713 | 0.889 | 0.783 |
+| ResNet-50 | X | 23.6 | 3.78 | 0.682 | 0.892 | 0.756 |
+| ResNet-50 | O | 23.6 | 3.78 | 0.695 | 0.903 | 0.769 |
+| MobileNetV2 | X | 2.31 | 0.29 | 0.598 | 0.852 | 0.661 |
+| MobileNetV2 | O | 2.31 | 0.29 | 0.613 | 0.862 | 0.682 |
 - _[23.01.31] basic training: quite different from the score recorded on the paper._
 
 ## Environment
