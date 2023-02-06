@@ -7,6 +7,7 @@ RUN apt-get update && \
     pip install -U git+https://github.com/albumentations-team/albumentations
 
 RUN pip install tensorflow-addons==0.19.0 && \
+    pip install tensorflow_probability==0.19.0 && \
     pip install pycocotools && \
     python -m pip install opencv-python && \
     pip install --upgrade wandb && \
