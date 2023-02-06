@@ -2,10 +2,9 @@ import cv2
 import numpy as np
 from typing import List
 import tensorflow as tf
-from tensorflow.python.client import device_lib
 import yaml
-from collections import namedtuple
 from easydict import EasyDict
+import logging
 import tempfile
 from tensorflow.python.profiler.model_analyzer import profile
 from tensorflow.python.profiler.option_builder import ProfileOptionBuilder
@@ -39,7 +38,8 @@ def visualize_with_RGB(
     alpha: float = 0.5
 ):
     """
-    draw keypoint on original image with different color to each side's skeleton
+    draw keypoint on original image
+    with different color to each side's skeleton
         - right: red
         - intermediate: green
         - left: blue
@@ -145,3 +145,49 @@ def get_flops(
         options=opts
     )
     return graph_info.total_float_ops / 2 / 1e9
+
+
+def get_log_template(
+    epoch: int,
+    total_time: int,
+    train_time: int,
+    train_loss: float,
+    train_acc: float,
+    val_loss: float,
+    val_acc: float,
+    lr: float
+):
+    log_text = 'Epoch: {epoch:03d} - {total_time}s[{train_time}s] '\
+               '| Train Loss: {t_loss:.4f} | Train Acc: {t_acc:.4f} '\
+               '| Val Loss: {v_loss:.4f} | Val Acc: {v_acc:.4f} '\
+               '| LR: {lr}'
+    log_text.format(
+        epoch=epoch,
+        total_time=total_time,
+        train_time=train_time,
+        t_loss=train_loss,
+        t_acc=train_acc,
+        v_loss=val_loss,
+        v_acc=val_acc,
+        lr=lr
+    )
+    return log_text
+
+
+def get_logger(log_file_path, name='rle-pose'):
+    logger = logging.getLogger(name=name)
+    logger.setLevel(logging.DEBUG)
+
+    file_handler = logging.FileHandler(log_file_path)
+    file_handler.setLevel(logging.INFO)
+
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+
+    formatter = logging.Formatter('[%(asctime)s line:%(lineno)d]:%(message)s')
+    file_handler.setFormatter(formatter)
+    console_handler.setFormatter(formatter)
+
+    logger.addHandler(file_handler)
+    logger.addHandler(console_handler)
+    return logger
