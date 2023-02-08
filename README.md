@@ -15,7 +15,6 @@ how to reach the official scores?
 | ResNet50 w/ album | 23.6 | 3.78 | 0.689 | 0.904 | 0.761 |
 - AP is calculated on `flip_test=True`
 - I have a quite different result from the origianl's when training just as it is in the official repo. So, various options are considered.
----
 
 ## Can it be used on mobile / edge devices?
 | Model | #Params(M) | GFLOPs | AP | model size(MB) | ms | memory access |
