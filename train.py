@@ -1,21 +1,23 @@
 """Custom training pipeline"""
 from pathlib import Path
 import os
-import numpy as np
-import tensorflow as tf
-import logging
 import argparse
-from collections import OrderedDict
+import time
+import tensorflow as tf
 
 import wandb
 
 from src.model import RLEModel
-from src.trainer import Trainer
+from src.function import train, validate
+from src.losses import RLELoss
+from src.scheduler import MultiStepLR
 from src.dataset import load_dataset
-from src.utils import parse_yaml, get_flops
-from evaluate import evaluate_coco, print_name_value
-
-logger = logging.getLogger(__name__)
+from src.evaluate import load_eval_dataset, STATS_NAMES
+from src.utils import (
+    parse_yaml,
+    get_flops,
+    get_logger
+)
 
 
 def define_argparser():
@@ -30,6 +32,9 @@ def define_argparser():
 
 
 def main():
+    tf.keras.backend.clear_session()
+    tf.random.set_seed(0)
+
     cfg = define_argparser()
     args = parse_yaml(cfg.config)
 
@@ -40,8 +45,8 @@ def main():
 
     cwd = Path('./').resolve()
     args.WANDB.NAME = \
-        '{dataset}/{exp_title}/{model}/\
-            {backbone}/bs{bs}_lr{lr}_s{sigma}_sf_{sf}_r{rot}'\
+        '{dataset}/{exp_title}/{model}/'\
+        '{backbone}/bs{bs}_lr{lr}_s{sigma}_sf_{sf}_r{rot}'\
         .format(
             dataset=args.DATASET.NAME,
             exp_title=args.WANDB.SUBTITLE,
@@ -59,29 +64,33 @@ def main():
     args.OUTPUT.CKPT = f'{args.OUTPUT.DIR}/ckpt'
     os.makedirs(args.OUTPUT.DIR, exist_ok=True)
 
-    strategy = tf.distribute.MirroredStrategy()
-
-    tf.keras.backend.clear_session()
-    tf.random.set_seed(0)
-    np.random.seed(0)
+    logger = get_logger(f'{args.OUTPUT.DIR}/work.log')
 
     train_ds = load_dataset(
-        str(cwd.parent / 'datasets' / args.DATASET.NAME / args.DATASET.TRAIN.PATTERN),
-        args.TRAIN.BATCH_SIZE * strategy.num_replicas_in_sync,
+        str(
+            cwd.parent
+            / 'datasets'
+            / args.DATASET.NAME
+            / args.DATASET.TRAIN.PATTERN
+        ),
+        args.TRAIN.BATCH_SIZE,
         args,
         'train',
         use_aug=True
     )
-    val_ds = load_dataset(
-        str(cwd.parent / 'datasets' / args.DATASET.NAME / args.DATASET.VAL.PATTERN),
-        args.VAL.BATCH_SIZE * strategy.num_replicas_in_sync,
-        args,
-        'val',
-        use_aug=False
-    )
-    train_dist_ds = strategy.experimental_distribute_dataset(train_ds)
-    val_dist_ds = strategy.experimental_distribute_dataset(val_ds)
-
+    eval_ds = None
+    if args.EVAL.DO_EVAL:
+        eval_ds = load_eval_dataset(
+            str(
+                cwd.parent
+                / 'datasets'
+                / args.DATASET.NAME
+                / args.DATASET.VAL.PATTERN
+            ),
+            args.EVAL.BATCH_SIZE,
+            args.DATASET.COMMON.K,
+            args.DATASET.COMMON.INPUT_SHAPE
+        )
     # initialize wandb
     run = None
     if args.WANDB.USE:
@@ -101,73 +110,115 @@ def main():
         run.define_metric("acc/*", step_metric="epoch")
         run.define_metric("lr", step_metric="epoch")
 
-    with strategy.scope():
-        model = RLEModel(
-            args.DATASET.COMMON.K,
-            args.DATASET.COMMON.INPUT_SHAPE,
-            args.MODEL.BACKBONE,
-            is_training=True
-        )
-        model.build([None, *args.DATASET.COMMON.INPUT_SHAPE])
-        # model.summary(print_fn=logger.info)
-        flops = get_flops(model, args.DATASET.COMMON.INPUT_SHAPE)
+    model = RLEModel(
+        args.DATASET.COMMON.K,
+        args.DATASET.COMMON.INPUT_SHAPE,
+        args.MODEL.BACKBONE,
+        is_training=True
+    )
+    model.build([None, *args.DATASET.COMMON.INPUT_SHAPE])
+    model.summary(print_fn=logger.info)
+    flops = get_flops(model, args.DATASET.COMMON.INPUT_SHAPE)
+    logger.info(
+        f'===={args.MODEL.NAME}====\n'
+        f'==== Backbone: {args.MODEL.BACKBONE}\n'
+        f'==== Input : {args.DATASET.COMMON.INPUT_SHAPE}\n'
+        f'==== Batch size: {args.TRAIN.BATCH_SIZE}\n'
+        f'==== Dataset: {args.DATASET.NAME}\n'
+        f'==== GFLOPs: {flops}'
+    )
+    n_train_steps = int(
+        args.DATASET.TRAIN.EXAMPLES // args.TRAIN.BATCH_SIZE
+    )
+    os.makedirs(args.OUTPUT.CKPT, exist_ok=True)
+
+    checkpoint_prefix = os.path.join(
+        args.OUTPUT.CKPT, "best_model.tf"
+    )
+    criterion = RLELoss()
+    lr_scheduler = MultiStepLR(
+        args.TRAIN.LR,
+        lr_steps=[
+            n_train_steps * epoch
+            for epoch in args.TRAIN.LR_EPOCHS
+        ],
+        lr_rate=args.TRAIN.LR_FACTOR
+    )
+    optimizer = tf.keras.optimizers.Adam(learning_rate=lr_scheduler)
+    best_ap = 1e-5
+    for epoch in tf.range(args.TRAIN.EPOCHS, dtype=tf.int64):
+        train_loss, train_acc, train_n_batches = 0.0, 0.0, 0.0
+        start_time = time.time()
+        for inputs in train_ds:
+            loss, acc = train(inputs, model, criterion, optimizer, args)
+            train_loss += loss
+            train_acc += acc
+            train_n_batches += 1
+        train_acc = train_acc / train_n_batches
+        train_loss = train_loss / train_n_batches
+        train_time = time.time() - start_time
+        current_lr = optimizer.lr.numpy()
         logger.info(
-            f'===={args.MODEL.NAME}====\n'
-            f'==== Backbone: {args.MODEL.BACKBONE}'
-            f'==== Input : {args.DATASET.COMMON.INPUT_SHAPE}'
-            f'==== Batch size: {args.TRAIN.BATCH_SIZE * strategy.num_replicas_in_sync}'
-            f'==== Dataset: {args.DATASET.NAME}',
-            f'==== GFLOPs: {flops}'
+            f'Epoch: {epoch + 1:03d} | [{int(train_time)}s] '
+            f'| Train Loss: {float(train_loss):.4f}'
+            f'| Train Acc: {float(train_acc):.4f}'
+            f'| LR: {float(current_lr)}'
         )
-        # train
-        trainer = Trainer(args, model, logger, strategy)
-        trainer.custom_loop(
-            train_dist_ds,
-            val_dist_ds,
-            run
-        )
-    # evaluation
-    if args.DATASET.VAL.USE_EVAL:
-        model = RLEModel(
-            args.DATASET.COMMON.K,
-            args.DATASET.COMMON.INPUT_SHAPE,
-            args.MODEL.BACKBONE,
-            is_training=False
-        )  # model will return heatmaps
-        model.load_weights(trainer.checkpoint_prefix)
-        stats = evaluate_coco(
-            model,
-            str(cwd.parent / args.DATASET.VAL.PATTERN),
-            args.DATASET.COMMON.K,
-            args.DATASET.COMMON.INPUT_SHAPE,
-            str(cwd.parent / args.DATASET.VAL.COCO_JSON)
-        )
-        stats_names = [
-            "AP",
-            "Ap .5",
-            "AP .75",
-            "AP (M)",
-            "AP (L)",
-            "AR",
-            "AR .5",
-            "AR .75",
-            "AR (M)",
-            "AR (L)",
-        ]
-
-        if args.WANDB.USE:
-            eval_table = wandb.Table(
-                data=[stats],
-                columns=stats_names
+        if run:  # write on wandb server
+            run.log(
+                {
+                    'loss/train': float(train_loss),
+                    'acc/train': float(train_acc),
+                    'lr': float(current_lr),
+                    'epoch': int(epoch + 1)
+                }
             )
-            run.log({'eval': eval_table})
-        else:
-            info_str = []
-            for i, name in enumerate(stats_names):
-                info_str.append((name, stats[i]))
+        # Terminate when NaN loss
+        if tf.math.is_nan(train_loss):
+            logger.info('Training is Terminated because of NaN Loss.')
+            raise ValueError('NaN Loss has coming up.')
 
-            results = OrderedDict(info_str)
-            print_name_value(results)
+        # save model newest weights
+        model.save_weights(
+            checkpoint_prefix.replace('best', 'newest')
+        )
+        if (eval_ds is not None)\
+                and (epoch + 1) % args.EVAL.EVAL_TERM == 0:
+            assert args.EVAL.DO_EVAL,\
+                'evaluation must be done.'\
+                f'but, received DO_EVAL: {args.EVAL.DO_EVAL}'
+            aps = validate(
+                model,
+                eval_ds,
+                args.DATASET.COMMON.INPUT_SHAPE,
+                str(cwd.parent / args.EVAL.COCO_JSON),
+                args.EVAL.FLIP_TEST
+            )
+            if aps[0] > best_ap:
+                best_ap = aps[0]
+                model.save_weights(checkpoint_prefix)
+
+    # final evaluation with best model
+    model = RLEModel(
+        args.DATASET.COMMON.K,
+        args.DATASET.COMMON.INPUT_SHAPE,
+        args.MODEL.BACKBONE,
+        is_training=False
+    )
+    model.load_weights(checkpoint_prefix)
+    aps = validate(
+        model,
+        eval_ds,
+        args.DATASET.COMMON.INPUT_SHAPE,
+        str(cwd.parent / args.EVAL.COCO_JSON),
+        args.EVAL.FLIP_TEST
+    )
+    if args.WANDB.USE:
+        eval_table = wandb.Table(
+            data=[aps],
+            columns=STATS_NAMES
+        )
+        run.log({'eval': eval_table})
 
 
 if __name__ == '__main__':
