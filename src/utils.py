@@ -147,33 +147,6 @@ def get_flops(
     return graph_info.total_float_ops / 2 / 1e9
 
 
-def get_log_template(
-    epoch: int,
-    total_time: int,
-    train_time: int,
-    train_loss: float,
-    train_acc: float,
-    val_loss: float,
-    val_acc: float,
-    lr: float
-):
-    log_text = 'Epoch: {epoch:03d} - {total_time}s[{train_time}s] '\
-               '| Train Loss: {t_loss:.4f} | Train Acc: {t_acc:.4f} '\
-               '| Val Loss: {v_loss:.4f} | Val Acc: {v_acc:.4f} '\
-               '| LR: {lr}'
-    log_text.format(
-        epoch=epoch,
-        total_time=total_time,
-        train_time=train_time,
-        t_loss=train_loss,
-        t_acc=train_acc,
-        v_loss=val_loss,
-        v_acc=val_acc,
-        lr=lr
-    )
-    return log_text
-
-
 def get_logger(log_file_path, name='rle-pose'):
     logger = logging.getLogger(name=name)
     logger.setLevel(logging.DEBUG)
