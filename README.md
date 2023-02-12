@@ -72,7 +72,9 @@ python train.py -c config/256x192_res50_regress-flow.yaml
 - [x] tfrecord 만드는 코드 추가
 - [x] 현재 모델들의 #params, GFLOPs 확인하여 기록
 - [ ] 모델이 고정되었을때 성능을 높일 수 있는 방법 모색
-  - [ ] albumentation 적용
+  - [x] albumentation
+  - [ ] different optimizers
+  - [ ] ema
 - [ ] 동일한 성능 재현을 위한 seed 고정 방법 찾아보기
 - [ ] 모바일 성능 비교할 벤치마크 모델 선정하기
 
