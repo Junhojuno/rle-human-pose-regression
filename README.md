@@ -6,8 +6,9 @@
 
 According to the official code, this repo is created for rewriting it with Tensorflow, at the same time, check the model efficiency on mobile.
 
-## Reproduce and outperform
-how to reach the official scores?
+## Results
+
+### COCO
 | Model | #Params(M) | GFLOPs | AP | AP50 | AP75 |
 | :------------- | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: |
 | Benchmark<br>(ResNet50) | 23.6 | 4.0 | 0.713 | 0.889 | 0.783 |
@@ -16,7 +17,9 @@ how to reach the official scores?
 - AP is calculated on `flip_test=True`
 - I have a quite different result from the origianl's when training just as it is in the official repo. So, various options are considered.
 
-## Can it be used on mobile / edge devices?
+## Lightweight Backbones
+The official did not care on running on mobile.
+
 | Model | #Params(M) | GFLOPs | AP | model size(MB) | ms | memory access |
 | :------------- | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: |
 | Benchmark<br>(ResNet-50) | 23.6 | 4.0 | 0.713 | ... | ... | ... |
