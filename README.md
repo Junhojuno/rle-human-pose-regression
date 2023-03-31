@@ -12,7 +12,7 @@ how to reach the official scores?
 | :------------- | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: |
 | Benchmark<br>(ResNet50) | 23.6 | 4.0 | 0.713 | 0.889 | 0.783 |
 | ResNet50 | 23.6 | 3.78 | 0.695 | 0.903 | 0.769 |
-| ResNet50 w/ album | 23.6 | 3.78 | 0.689 | 0.904 | 0.761 |
+| ResNet50 (w/ album) | 23.6 | 3.78 | 0.689 | 0.904 | 0.761 |
 - AP is calculated on `flip_test=True`
 - I have a quite different result from the origianl's when training just as it is in the official repo. So, various options are considered.
 
@@ -20,7 +20,7 @@ how to reach the official scores?
 | Model | #Params(M) | GFLOPs | AP | model size(MB) | ms | memory access |
 | :------------- | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: |
 | Benchmark<br>(ResNet-50) | 23.6 | 4.0 | 0.713 | ... | ... | ... |
-| MobileNetV2 w/o flip | 2.31 | 0.29 | 0.598 | ... | ... | ... |
+| MobileNetV2 (w/o flip) | 2.31 | 0.29 | 0.598 | ... | ... | ... |
 | MobileNetV2 | 2.31 | 0.29 | 0.613 | ... | ... | ... |
 - All models are tested on `iPhone XS`
 - AP is calculated on `flip_test=True`
