@@ -8,7 +8,7 @@ According to the official code, this repo is created for rewriting it with Tenso
 
 ## Results
 
-### COCO
+### COCO Validation Set
 | Model | #Params(M) | GFLOPs | AP | AP50 | AP75 |
 | :------------- | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: |
 | Benchmark<br>(ResNet50) | 23.6 | 4.0 | 0.713 | 0.889 | 0.783 |
@@ -17,7 +17,7 @@ According to the official code, this repo is created for rewriting it with Tenso
 - AP is calculated on `flip_test=True`
 - I have a quite different result from the origianl's when training just as it is in the official repo. So, various options are considered.
 
-## Lightweight Backbones
+### On Lightweight Backbones
 The official did not care on running on mobile.
 
 | Model | #Params(M) | GFLOPs | AP | model size(MB) | ms | memory access |
@@ -29,9 +29,13 @@ The official did not care on running on mobile.
 - AP is calculated on `flip_test=True`
 - add a mobile benchmark model to compare
 
-## Usage
+### On Small inputs
 
-### Environment
+<br>
+
+## Setup
+
+### environment
 After downloading `docker` and `nvidia-docker` and clone this repo, just run the below script on the cmd at current dir. <br>
 Feel free to name the image.
   - tensorflow==2.11
@@ -41,7 +45,7 @@ Feel free to name the image.
 docker build -t rle:tf .
 ```
 
-### Before starting
+### project tree
 Before cloning this repo, you have to set the dir tree like below. if not, the codes all will throw errors.
 ```bash
 root
@@ -58,14 +62,14 @@ root
 └── ...
 ``` 
 
-### Convert to TFRecord
+### data
 Train & evaluation are operated on tfrecord files. so download the raw dataset form https://cocodataset.org and convert it to `.tfrecord`. <br>
 According to the dir tree mentioned above, it is easy to convert, just run the code below. If not following the tree, should change the current dir using `-c` option on command line.
 ```python
 python write_tfrecord.py
 ```
 
-### Train / Evaluation
+### training
 ```python
 python train.py -c config/256x192_res50_regress-flow.yaml
 ```
