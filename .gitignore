@@ -1,5 +1,5 @@
 # .json
-settings.json
+*.json
 
 # legacy
 legacy/

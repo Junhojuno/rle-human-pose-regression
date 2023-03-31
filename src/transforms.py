@@ -35,8 +35,11 @@ def transform(
 
     # for offsetting translations caused by rotation:
     # https://docs.opencv.org/2.4/modules/imgproc/doc/geometric_transformations.html
-    rx = (1 - tf.cos(angle)) * output_shape[1] * scale / 2 - tf.sin(angle) * output_shape[0] * scale / 2
-    ry = tf.sin(angle) * output_shape[1] * scale / 2 + (1 - tf.cos(angle)) * output_shape[0] * scale / 2
+    rx = (1 - tf.cos(angle)) * \
+        output_shape[1] * scale / 2 - \
+        tf.sin(angle) * output_shape[0] * scale / 2
+    ry = tf.sin(angle) * output_shape[1] * scale / 2 + \
+        (1 - tf.cos(angle)) * output_shape[0] * scale / 2
 
     transform = [scale * tf.cos(angle), scale * tf.sin(angle), rx + tx,
                  -scale * tf.sin(angle), scale * tf.cos(angle), ry + ty,
@@ -63,6 +66,178 @@ def transform(
 
     M = tf.concat([transform_xy, [[rx_xy - tx_xy], [ry_xy - ty_xy]]], axis=1)
     return img, M
+
+
+def affine_transform(
+    image,
+    bbox_center,
+    angle: float,
+    scale: float,
+    input_shape: List,
+):
+    """return transformed image and Matrix"""
+    M = generate_affine_matrix(
+        bbox_center, angle, scale, input_shape, inv=False
+    )
+    M = tf.reshape(M[:6], [2, 3])
+
+    transforms = generate_affine_matrix(
+        bbox_center, angle, scale, input_shape, inv=True
+    )
+    transformed_image = tfa.image.transform(
+        tf.expand_dims(image, 0),
+        tf.expand_dims(transforms, 0),
+        output_shape=input_shape[:2]
+    )
+    transformed_image = tf.squeeze(transformed_image, 0)
+    return transformed_image, M
+
+
+def generate_affine_matrix(
+    bbox_center,
+    angle: float,
+    scale: float,
+    input_shape: List,
+    inv: bool = False
+):
+    crop_mat = generate_crop_matrix(bbox_center, scale, input_shape, inv=inv)
+    resize_mat = generate_resize_matrix(scale, inv=inv)
+    rot_mat = generate_rotation_matrix(angle, input_shape, inv=inv)
+
+    if inv:
+        transform = crop_mat @ resize_mat @ rot_mat
+    else:
+        transform = rot_mat @ resize_mat @ crop_mat
+
+    transform = tf.reshape(transform, [-1])[:-1]
+    return transform
+
+
+def generate_crop_matrix(bbox_center, scale, input_shape, inv: bool = False):
+    crop_x = bbox_center[0] - (input_shape[1] * scale) / 2
+    crop_y = bbox_center[1] - (input_shape[0] * scale) / 2
+
+    crop_mat = tf.cond(
+        tf.math.equal(inv, True),
+        lambda: tf.reshape(
+            [
+                1., 0., crop_x,
+                0., 1., crop_y,
+                0., 0., 1.
+            ],
+            shape=[3, 3]
+        ),
+        lambda: tf.reshape(
+            [
+                1., 0., -crop_x,
+                0., 1., -crop_y,
+                0., 0., 1.
+            ],
+            shape=[3, 3]
+        )
+    )
+    return crop_mat
+
+
+def generate_resize_matrix(scale, inv: bool = False):
+    resize_mat = tf.cond(
+        tf.math.equal(inv, True),
+        lambda: tf.reshape(
+            [
+                scale, 0., 0.,
+                0., scale, 0.,
+                0., 0., 1.
+            ],
+            shape=[3, 3]
+        ),
+        lambda: tf.reshape(
+            [
+                1. / scale, 0., 0.,
+                0., 1. / scale, 0.,
+                0., 0., 1.
+            ],
+            shape=[3, 3]
+        ),
+    )
+    return resize_mat
+
+
+def generate_rotation_matrix(angle, input_shape, inv: bool = False):
+    radian = angle / 180 * tf.constant(math.pi, dtype=tf.float32)
+
+    # move center to origin
+    # 이미지 중심을 원점으로 이동
+    translation1 = tf.reshape(
+        tf.convert_to_tensor(
+            [
+                1., 0., (input_shape[1] / 2),
+                0., 1., (input_shape[0] / 2),
+                0., 0., 1.
+            ],
+            dtype=tf.float32
+        ),
+        shape=[3, 3]
+    )
+
+    # move back to center
+    # 다시 이미지 중심으로 이동
+    translation2 = tf.reshape(
+        tf.convert_to_tensor(
+            [
+                1., 0., -(input_shape[1] / 2),
+                0., 1., -(input_shape[0] / 2),
+                0., 0., 1.
+            ],
+            dtype=tf.float32
+        ),
+        shape=[3, 3]
+    )
+
+    # if inv:
+    #     rotation_mat = tf.reshape(
+    #         [
+    #             math.cos(radian), math.sin(radian), 0.,
+    #             -math.sin(radian), math.cos(radian), 0.,
+    #             0., 0., 1.
+    #         ],
+    #         shape=[3, 3]
+    #     )
+
+    # else:
+    #     rotation_mat = tf.reshape(
+    #         [
+    #             math.cos(radian), -math.sin(radian), 0.,
+    #             math.sin(radian), math.cos(radian), 0.,
+    #             0., 0., 1.
+    #         ],
+    #         shape=[3, 3]
+    #     )
+    rotation_mat = tf.cond(
+        tf.math.equal(inv, True),
+        lambda: tf.reshape(
+            tf.convert_to_tensor(
+                [
+                    tf.math.cos(radian), tf.math.sin(radian), 0.,
+                    -tf.math.sin(radian), tf.math.cos(radian), 0.,
+                    0., 0., 1.
+                ],
+                dtype=tf.float32
+            ),
+            shape=[3, 3]
+        ),
+        lambda: tf.reshape(
+            tf.convert_to_tensor(
+                [
+                    tf.math.cos(radian), -tf.math.sin(radian), 0.,
+                    tf.math.sin(radian), tf.math.cos(radian), 0.,
+                    0., 0., 1.
+                ],
+                dtype=tf.float32
+            ),
+            shape=[3, 3]
+        )
+    )
+    return translation1 @ rotation_mat @ translation2
 
 
 def preprocess(
@@ -119,6 +294,16 @@ def preprocess(
         lambda: 1.0
     )
     # 2. rotation
+    # angle = tf.cond(
+    #     tf.math.equal(use_aug, True)
+    #     & tf.math.less_equal(tf.random.uniform([]), rotation_prob),
+    #     lambda: tf.clip_by_value(
+    #         tf.random.normal([]) * rotation_factor,
+    #         -2 * rotation_factor,
+    #         2 * rotation_factor
+    #     ) / 180 * tf.constant(math.pi, dtype=tf.float32),
+    #     lambda: angle
+    # )
     angle = tf.cond(
         tf.math.equal(use_aug, True)
         & tf.math.less_equal(tf.random.uniform([]), rotation_prob),
@@ -126,7 +311,7 @@ def preprocess(
             tf.random.normal([]) * rotation_factor,
             -2 * rotation_factor,
             2 * rotation_factor
-        ) / 180 * tf.constant(math.pi, dtype=tf.float32),
+        ),
         lambda: angle
     )
     # 3. horizontal flip
@@ -137,7 +322,8 @@ def preprocess(
         lambda: (img, bbox_center, kp)
     )
     # transform to the object's center
-    img, M = transform(img, scale, angle, bbox_center, input_shape[:2])
+    # img, M = transform(img, scale, angle, bbox_center, input_shape[:2])
+    img, M = affine_transform(img, bbox_center, angle, scale, input_shape)
 
     xy = kp[:, :2]
     xy = tf.transpose(tf.matmul(M[:, :2], xy, transpose_b=True)) + M[:, -1]
@@ -270,10 +456,10 @@ def generate_target(keypoints, input_shape: List):
 
     # masking values not existing in [-0.5 ~ 0.5]
     target_visible *= tf.cast((
-            (target[:, 0] <= 0.5) &
-            (target[:, 0] >= -0.5) &
-            (target[:, 1] <= 0.5) &
-            (target[:, 1] >= -0.5)), tf.float32)
+        (target[:, 0] <= 0.5) &
+        (target[:, 0] >= -0.5) &
+        (target[:, 1] <= 0.5) &
+        (target[:, 1] >= -0.5)), tf.float32)
 
     target = tf.concat(
         [target, tf.expand_dims(target_visible, axis=1)],

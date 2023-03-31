@@ -8,11 +8,12 @@ import tensorflow as tf
 import wandb
 
 from src.model import RLEModel
-from src.function import train, validate
+from src.function import train
 from src.losses import RLELoss
 from src.scheduler import MultiStepLR
 from src.dataset import load_dataset
-from src.evaluate import load_eval_dataset, STATS_NAMES
+from src.eval.coco import eval_coco
+from src.eval.dataloader import load_eval_dataset
 from src.utils import (
     parse_yaml,
     get_flops,
@@ -87,7 +88,7 @@ def main():
                 / args.DATASET.NAME
                 / args.DATASET.VAL.PATTERN
             ),
-            args.EVAL.BATCH_SIZE,
+            args.TRAIN_BATCH_SIZE,
             args.DATASET.COMMON.K,
             args.DATASET.COMMON.INPUT_SHAPE
         )
@@ -187,15 +188,15 @@ def main():
             assert args.EVAL.DO_EVAL,\
                 'evaluation must be done.'\
                 f'but, received DO_EVAL: {args.EVAL.DO_EVAL}'
-            aps = validate(
+            ap, _ = eval_coco(
                 model,
                 eval_ds,
+                args.EVAL.BATCH_SIZE,
                 args.DATASET.COMMON.INPUT_SHAPE,
-                str(cwd.parent / args.EVAL.COCO_JSON),
-                args.EVAL.FLIP_TEST
+                use_flip=False
             )
-            if aps[0] > best_ap:
-                best_ap = aps[0]
+            if ap > best_ap:
+                best_ap = ap
                 model.save_weights(checkpoint_prefix)
 
     # final evaluation with best model
@@ -206,17 +207,17 @@ def main():
         is_training=False
     )
     model.load_weights(checkpoint_prefix)
-    aps = validate(
+    ap, details = eval_coco(
         model,
         eval_ds,
+        args.EVAL.BATCH_SIZE,
         args.DATASET.COMMON.INPUT_SHAPE,
-        str(cwd.parent / args.EVAL.COCO_JSON),
-        args.EVAL.FLIP_TEST
+        use_flip=True
     )
     if args.WANDB.USE:
         eval_table = wandb.Table(
-            data=[aps],
-            columns=STATS_NAMES
+            data=[list(details.values())],
+            columns=list(details.keys())
         )
         run.log({'eval': eval_table})
 
