@@ -9,27 +9,25 @@ According to the official code, this repo is created for rewriting it with Tenso
 ## Results
 
 ### COCO Validation Set
-| Model | #Params(M) | GFLOPs | AP | AP50 | AP75 |
-| :------------- | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: |
-| Benchmark<br>(ResNet50) | 23.6 | 4.0 | 0.713 | 0.889 | 0.783 |
-| ResNet50 | 23.6 | 3.78 | 0.695 | 0.903 | 0.769 |
-| ResNet50 (w/ album) | 23.6 | 3.78 | 0.689 | 0.904 | 0.761 |
-- AP is calculated on `flip_test=True`
-- I have a quite different result from the origianl's when training just as it is in the official repo. So, various options are considered.
+| Model | #Params<br>(M) | GFLOPs | AP | AP.5 | AP .75 | AP (M) | AP (L) | AR | AR .5 | AR .75 | AR (M) | AR (L) |
+| :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: |
+| Benchmark<br>(ResNet50) | 23.6 | 4.0 | 0.713 | 0.889 | 0.783 | - | - | - | - | - | - | - |
+| Ours(ResNet50) | 23.6 | 3.78 | 0.695 | 0.903 | 0.769 | - | - | - | - | - | - | - |
+  - AP is calculated on `flip_test=True`
+
+### On Small inputs
+| Model | input size | #Params<br>(M) | GFLOPs | AP | AP.5 | AP .75 | AP (M) | AP (L) | AR | AR .5 | AR .75 | AR (M) | AR (L) |
+| :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: |
+| Ours(ResNet50) | 128x96 | 23.6 | 3.78 | 0.695 | 0.903 | 0.769 | - | - | - | - | - | - | - |
 
 ### On Lightweight Backbones
 The official did not care on running on mobile.
 
-| Model | #Params(M) | GFLOPs | AP | model size(MB) | ms | memory access |
-| :------------- | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: |
-| Benchmark<br>(ResNet-50) | 23.6 | 4.0 | 0.713 | ... | ... | ... |
-| MobileNetV2 (w/o flip) | 2.31 | 0.29 | 0.598 | ... | ... | ... |
-| MobileNetV2 | 2.31 | 0.29 | 0.613 | ... | ... | ... |
-- All models are tested on `iPhone XS`
-- AP is calculated on `flip_test=True`
-- add a mobile benchmark model to compare
-
-### On Small inputs
+| Model | #Params<br>(M) | GFLOPs | AP | model size(MB) | ms | memory access |
+| :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: |
+| Ours(MobileNetV2) | 2.31 | 0.29 | 0.598 | ... | ... | ... |
+  - `AP` is calcualted without flip, because it is not used in application(`flip_test=False` as default).
+  - all tests on `iPhone XS`
 
 <br>
 
