@@ -7,13 +7,12 @@ import tensorflow as tf
 
 import wandb
 
-from src.model import RLEModel
-from src.function import train
+from src.model import PoseRegModel, ModelWithFlow
+from src.function import train, validate
 from src.losses import RLELoss
 from src.scheduler import MultiStepLR
 from src.dataset import load_dataset
-from src.eval.coco import eval_coco
-from src.eval.dataloader import load_eval_dataset
+from src.eval import load_eval_dataset
 from src.utils import (
     parse_yaml,
     get_flops,
@@ -39,10 +38,10 @@ def main():
     cfg = define_argparser()
     args = parse_yaml(cfg.config)
 
-    args.DATASET.COMMON.OUTPUT_SHAPE = [
-        args.DATASET.COMMON.INPUT_SHAPE[0] // 4,
-        args.DATASET.COMMON.INPUT_SHAPE[1] // 4
-    ]
+    # args.DATASET.COMMON.OUTPUT_SHAPE = [
+    #     args.DATASET.COMMON.INPUT_SHAPE[0] // 4,
+    #     args.DATASET.COMMON.INPUT_SHAPE[1] // 4
+    # ]
 
     cwd = Path('./').resolve()
     args.WANDB.NAME = \
@@ -88,10 +87,13 @@ def main():
                 / args.DATASET.NAME
                 / args.DATASET.VAL.PATTERN
             ),
-            args.TRAIN_BATCH_SIZE,
+            args.TRAIN.BATCH_SIZE,
             args.DATASET.COMMON.K,
             args.DATASET.COMMON.INPUT_SHAPE
         )
+        input_height, input_width, _ = args.DATASET.COMMON.INPUT_SHAPE
+        eval_name = \
+            f'{input_height}x{input_width}_{args.MODEL.BACKBONE}'
     # initialize wandb
     run = None
     if args.WANDB.USE:
@@ -105,29 +107,32 @@ def main():
         )
         # define our custom x axis metric
         run.define_metric("epoch")
-        run.define_metric("eval")
+        run.define_metric("eval/AP")
         # define which metrics will be plotted against it
         run.define_metric("loss/*", step_metric="epoch")
         run.define_metric("acc/*", step_metric="epoch")
+        run.define_metric("AP/*", step_metric="epoch")
         run.define_metric("lr", step_metric="epoch")
 
-    model = RLEModel(
+    model = ModelWithFlow(
         args.DATASET.COMMON.K,
         args.DATASET.COMMON.INPUT_SHAPE,
-        args.MODEL.BACKBONE,
-        is_training=True
+        args.MODEL.BACKBONE
     )
-    model.build([None, *args.DATASET.COMMON.INPUT_SHAPE])
+    # initialize the model not to throw ValueError
+    _ = model(
+        tf.random.normal([1, *args.DATASET.COMMON.INPUT_SHAPE]),
+        tf.random.normal([1, args.DATASET.COMMON.K, 2]),
+        training=False
+    )
     model.summary(print_fn=logger.info)
     flops = get_flops(model, args.DATASET.COMMON.INPUT_SHAPE)
-    logger.info(
-        f'===={args.MODEL.NAME}====\n'
-        f'==== Backbone: {args.MODEL.BACKBONE}\n'
-        f'==== Input : {args.DATASET.COMMON.INPUT_SHAPE}\n'
-        f'==== Batch size: {args.TRAIN.BATCH_SIZE}\n'
-        f'==== Dataset: {args.DATASET.NAME}\n'
-        f'==== GFLOPs: {flops}'
-    )
+    logger.info(f'===={args.MODEL.NAME}====')
+    logger.info(f'==== Backbone: {args.MODEL.BACKBONE}')
+    logger.info(f'==== Input : {args.DATASET.COMMON.INPUT_SHAPE}')
+    logger.info(f'==== Batch size: {args.TRAIN.BATCH_SIZE}')
+    logger.info(f'==== Dataset: {args.DATASET.NAME}')
+    logger.info(f'==== GFLOPs: {flops}')
     n_train_steps = int(
         args.DATASET.TRAIN.EXAMPLES // args.TRAIN.BATCH_SIZE
     )
@@ -158,11 +163,11 @@ def main():
         train_acc = train_acc / train_n_batches
         train_loss = train_loss / train_n_batches
         train_time = time.time() - start_time
-        current_lr = optimizer.lr.numpy()
+        current_lr = optimizer.lr(optimizer.iterations).numpy()
         logger.info(
-            f'Epoch: {epoch + 1:03d} | [{int(train_time)}s] '
-            f'| Train Loss: {float(train_loss):.4f}'
-            f'| Train Acc: {float(train_acc):.4f}'
+            f'Epoch: {epoch + 1:03d} | {int(train_time)}s '
+            f'| Train Loss: {float(train_loss):.4f} '
+            f'| Train Acc: {float(train_acc):.4f} '
             f'| LR: {float(current_lr)}'
         )
         if run:  # write on wandb server
@@ -180,7 +185,7 @@ def main():
             raise ValueError('NaN Loss has coming up.')
 
         # save model newest weights
-        model.save_weights(
+        model.reg_model.save_weights(
             checkpoint_prefix.replace('best', 'newest')
         )
         if (eval_ds is not None)\
@@ -188,30 +193,35 @@ def main():
             assert args.EVAL.DO_EVAL,\
                 'evaluation must be done.'\
                 f'but, received DO_EVAL: {args.EVAL.DO_EVAL}'
-            ap, _ = eval_coco(
-                model,
+            ap, _ = validate(
+                model.reg_model,
                 eval_ds,
-                args.EVAL.BATCH_SIZE,
                 args.DATASET.COMMON.INPUT_SHAPE,
+                str(cwd.parent / args.EVAL.COCO_JSON),
+                eval_name,
+                logger.info,
                 use_flip=False
             )
+            if args.WANDB.USE:
+                run.log({'AP/every_5_epoch': ap})
             if ap > best_ap:
                 best_ap = ap
-                model.save_weights(checkpoint_prefix)
+                model.reg_model.save_weights(checkpoint_prefix)
 
     # final evaluation with best model
-    model = RLEModel(
+    model = PoseRegModel(
         args.DATASET.COMMON.K,
         args.DATASET.COMMON.INPUT_SHAPE,
-        args.MODEL.BACKBONE,
-        is_training=False
+        args.MODEL.BACKBONE
     )
     model.load_weights(checkpoint_prefix)
-    ap, details = eval_coco(
+    ap, details = validate(
         model,
         eval_ds,
-        args.EVAL.BATCH_SIZE,
         args.DATASET.COMMON.INPUT_SHAPE,
+        str(cwd.parent / args.EVAL.COCO_JSON),
+        eval_name,
+        logger.info,
         use_flip=True
     )
     if args.WANDB.USE:

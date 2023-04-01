@@ -22,52 +22,6 @@ def parse_example(record, num_keypoints):
     return image, bbox, keypoints
 
 
-def transform(
-    img,
-    scale: float,
-    angle: float,
-    center: tf.Tensor,
-    output_shape: List
-) -> Tuple[tf.Tensor, tf.Tensor]:
-    """affine transformation"""
-    tx = center[0] - output_shape[1] * scale / 2
-    ty = center[1] - output_shape[0] * scale / 2
-
-    # for offsetting translations caused by rotation:
-    # https://docs.opencv.org/2.4/modules/imgproc/doc/geometric_transformations.html
-    rx = (1 - tf.cos(angle)) * \
-        output_shape[1] * scale / 2 - \
-        tf.sin(angle) * output_shape[0] * scale / 2
-    ry = tf.sin(angle) * output_shape[1] * scale / 2 + \
-        (1 - tf.cos(angle)) * output_shape[0] * scale / 2
-
-    transform = [scale * tf.cos(angle), scale * tf.sin(angle), rx + tx,
-                 -scale * tf.sin(angle), scale * tf.cos(angle), ry + ty,
-                 0., 0.]
-
-    img = tfa.image.transform(tf.expand_dims(img, axis=0),
-                              tf.expand_dims(transform, axis=0),
-                              fill_mode='constant',
-                              output_shape=output_shape[:2])
-    img = tf.squeeze(img)
-
-    # transform for keypoints
-    alpha = 1 / scale * tf.cos(-angle)
-    beta = 1 / scale * tf.sin(-angle)
-
-    rx_xy = (1 - alpha) * center[0] - beta * center[1]
-    ry_xy = beta * center[0] + (1 - alpha) * center[1]
-
-    transform_xy = [[alpha, beta],
-                    [-beta, alpha]]
-
-    tx_xy = center[0] - output_shape[1] / 2
-    ty_xy = center[1] - output_shape[0] / 2
-
-    M = tf.concat([transform_xy, [[rx_xy - tx_xy], [ry_xy - ty_xy]]], axis=1)
-    return img, M
-
-
 def affine_transform(
     image,
     bbox_center,
@@ -77,12 +31,20 @@ def affine_transform(
 ):
     """return transformed image and Matrix"""
     M = generate_affine_matrix(
-        bbox_center, angle, scale, input_shape, inv=False
+        bbox_center,
+        angle,
+        scale,
+        [input_shape[0] - 1, input_shape[1] - 1],
+        inv=False
     )
     M = tf.reshape(M[:6], [2, 3])
 
     transforms = generate_affine_matrix(
-        bbox_center, angle, scale, input_shape, inv=True
+        bbox_center,
+        angle,
+        scale,
+        [input_shape[0] - 1, input_shape[1] - 1],
+        inv=True
     )
     transformed_image = tfa.image.transform(
         tf.expand_dims(image, 0),
@@ -193,25 +155,6 @@ def generate_rotation_matrix(angle, input_shape, inv: bool = False):
         shape=[3, 3]
     )
 
-    # if inv:
-    #     rotation_mat = tf.reshape(
-    #         [
-    #             math.cos(radian), math.sin(radian), 0.,
-    #             -math.sin(radian), math.cos(radian), 0.,
-    #             0., 0., 1.
-    #         ],
-    #         shape=[3, 3]
-    #     )
-
-    # else:
-    #     rotation_mat = tf.reshape(
-    #         [
-    #             math.cos(radian), -math.sin(radian), 0.,
-    #             math.sin(radian), math.cos(radian), 0.,
-    #             0., 0., 1.
-    #         ],
-    #         shape=[3, 3]
-    #     )
     rotation_mat = tf.cond(
         tf.math.equal(inv, True),
         lambda: tf.reshape(
@@ -294,16 +237,6 @@ def preprocess(
         lambda: 1.0
     )
     # 2. rotation
-    # angle = tf.cond(
-    #     tf.math.equal(use_aug, True)
-    #     & tf.math.less_equal(tf.random.uniform([]), rotation_prob),
-    #     lambda: tf.clip_by_value(
-    #         tf.random.normal([]) * rotation_factor,
-    #         -2 * rotation_factor,
-    #         2 * rotation_factor
-    #     ) / 180 * tf.constant(math.pi, dtype=tf.float32),
-    #     lambda: angle
-    # )
     angle = tf.cond(
         tf.math.equal(use_aug, True)
         & tf.math.less_equal(tf.random.uniform([]), rotation_prob),
@@ -322,7 +255,6 @@ def preprocess(
         lambda: (img, bbox_center, kp)
     )
     # transform to the object's center
-    # img, M = transform(img, scale, angle, bbox_center, input_shape[:2])
     img, M = affine_transform(img, bbox_center, angle, scale, input_shape)
 
     xy = kp[:, :2]
@@ -346,7 +278,6 @@ def preprocess(
         lambda: apply_albumentaion(img),
         lambda: img
     )
-
     img = tf.cast(img, tf.float32)
     img = tf.cond(
         tf.math.equal(use_image_norm, True),

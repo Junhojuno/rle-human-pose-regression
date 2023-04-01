@@ -1,15 +1,18 @@
 import os
 import json
 import numpy as np
-from typing import List
+from typing import List, Callable
 import cv2
+from tqdm import tqdm
 from collections import OrderedDict
+from easydict import EasyDict
+
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 import tensorflow as tf
 
 from src.metrics import calc_coord_accuracy
-from src.evaluate import (
+from src.eval import (
     flip,
     flip_outputs,
     suppress_stdout,
@@ -42,22 +45,35 @@ def validate(
     model,
     eval_ds,
     input_shape: List,
-    coco_path: str = '',
-    use_flip: bool = True
+    coco_path: str,
+    print_name: str,
+    print_func: Callable,
+    use_flip: bool = True,
 ):
     with suppress_stdout():
         coco = COCO(coco_path)
 
     results = []
-    for img_ids, imgs, Ms in eval_ds:
+    for img_ids, imgs, Ms in tqdm(eval_ds, '[evaluation]'):
         img_ids = img_ids.numpy()
         Ms = Ms.numpy()
 
-        pred = model(imgs, training=False)
-
+        pred_mu, pred_sigma = model(imgs, training=False)
+        pred_scores = 1 - pred_sigma
+        pred_scores = tf.math.reduce_mean(pred_scores, -1, keepdims=True)
+        pred = EasyDict(
+            mu=pred_mu,
+            maxvals=pred_scores
+        )
         if use_flip:
             imgs_fliped = flip(imgs)
-            pred_fliped = model(imgs_fliped, training=False)
+            pred_mu, pred_sigma = model(imgs_fliped, training=False)
+            pred_scores = 1 - pred_sigma
+            pred_scores = tf.math.reduce_mean(pred_scores, -1, keepdims=True)
+            pred_fliped = EasyDict(
+                mu=pred_mu,
+                maxvals=pred_scores
+            )
             pred_fliped = flip_outputs(pred_fliped, input_shape[1])
             for k in pred.keys():
                 if isinstance(pred[k], list):
@@ -80,7 +96,7 @@ def validate(
             pred_kpts[i, :, :2] = \
                 np.matmul(
                     M_inv[:, :2], pred_kpts[i, :, :2].T
-                ).T \
+            ).T \
                 + M_inv[:, 2].T
 
             # rescore
@@ -110,5 +126,5 @@ def validate(
         info_str.append((name, cocoEval.stats[i]))
 
     results = OrderedDict(info_str)
-    print_coco_eval(results)
-    return cocoEval.stats  # return AP/AR all
+    print_coco_eval(results, print_name, print_func)
+    return results['AP'], results  # return AP & all

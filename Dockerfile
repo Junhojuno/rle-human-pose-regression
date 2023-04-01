@@ -1,5 +1,5 @@
 # base image
-FROM tensorflow/tensorflow:2.11.0
+FROM tensorflow/tensorflow:2.9.3
 
 # 기본 패키지 설치
 RUN apt-get update && \
@@ -7,7 +7,7 @@ RUN apt-get update && \
     pip install -U git+https://github.com/albumentations-team/albumentations
 
 RUN pip install tensorflow-addons==0.19.0 && \
-    pip install tensorflow_probability==0.19.0 && \
+    pip install tensorflow_probability==0.17.0 && \
     pip install pycocotools && \
     python -m pip install opencv-python && \
     pip install --upgrade wandb && \

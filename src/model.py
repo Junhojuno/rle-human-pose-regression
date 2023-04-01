@@ -3,7 +3,7 @@ from typing import List, Optional, Callable
 from easydict import EasyDict
 import tensorflow as tf
 import tensorflow_probability as tfp
-from tensorflow.keras import Model, Sequential
+from tensorflow.keras import Model, Sequential, Input
 from tensorflow.keras import layers
 
 from src.backbone import build_backbone
@@ -227,6 +227,78 @@ class RLEModel(Model):
             mu=mu_hat,
             sigma=sigma_hat,
             maxvals=tf.cast(scores, tf.float32),
+            nf_loss=nf_loss
+        )
+        return output
+
+
+def PoseRegModel(
+    num_keypoints: int = 17,
+    input_shape: List = [256, 192, 3],
+    backbone_type: str = 'resnet50',
+    sigmoid_fn: Callable = layers.Activation('sigmoid'),
+):
+    name = f'reg_model_{backbone_type}'
+    inputs = Input(input_shape)
+    x = build_backbone(backbone_type, input_shape)(inputs)
+    x = layers.GlobalAveragePooling2D()(x)
+    x_mu = layers.Dense(num_keypoints * 2)(x)
+    x_sigma = layers.Dense(num_keypoints * 2)(x)
+
+    x_mu = layers.Reshape([num_keypoints, 2])(x_mu)
+    x_sigma = layers.Reshape([num_keypoints, 2])(x_sigma)
+    x_sigma = sigmoid_fn(x_sigma)
+
+    # x_scores = 1 - x_sigma
+    # x_scores = tf.math.reduce_mean(x_scores, -1, keepdims=True)
+    # return Model(inputs, [x_mu, x_sigma, x_scores], name=name)
+    return Model(inputs, [x_mu, x_sigma], name=name)
+
+
+class ModelWithFlow(Model):
+    """Regression model with Flow-based"""
+
+    def __init__(
+        self,
+        num_keypoints: int,
+        input_shape: List = [256, 192, 3],
+        backbone_type: str = 'resnet50',
+        sigmoid_fn: Callable = layers.Activation('sigmoid')
+    ):
+        super().__init__()
+        self.reg_model = PoseRegModel(
+            num_keypoints,
+            input_shape,
+            backbone_type,
+            sigmoid_fn
+        )
+        self.num_keypoints = num_keypoints
+
+        masks = tf.tile(
+            tf.convert_to_tensor([[0, 1], [1, 0]], dtype=tf.float32),
+            multiples=[3, 1]
+        )
+        prior = tfp.distributions.MultivariateNormalDiag(
+            tf.zeros(2), tf.ones(2)
+        )
+        self.flow_model = RealNVP(nets, nett, masks, prior)
+        self.flow_model.build([None, 2])
+
+    def call(self, inputs, mu_g=None) -> EasyDict:
+        mu_hat, sigma_hat = self.reg_model(inputs)
+
+        # log_phi means logG_phi(bar_mu) in the paper.
+        if mu_g is not None:
+            bar_mu = (mu_hat - mu_g) / sigma_hat
+            log_phi = self.flow_model(tf.reshape(bar_mu, [-1, 2]))
+            log_phi = tf.reshape(log_phi, [-1, self.num_keypoints, 1])
+            nf_loss = tf.math.log(sigma_hat) - log_phi
+        else:
+            nf_loss = None
+
+        output = EasyDict(
+            mu=mu_hat,
+            sigma=sigma_hat,
             nf_loss=nf_loss
         )
         return output
