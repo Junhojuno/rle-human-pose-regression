@@ -27,7 +27,7 @@ The backbones used in the paper are ResNet50 and HRNet which are not suitable on
   - `MobileNetV3-Large`, which is comparable with MobileNetV2.
   - `GhostNetV2`, which has more params but, more efficient than any other backbones.
 
-| Model | #Params<br>(M) | GFLOPs | AP | model size(MB) | ms | memory access |
+| Model | #Params<br>(M) | GFLOPs | AP | model size<br>(MB) | latency<br>(ms) | memory access |
 | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: |
 | Ours<br>(MobileNetV2) | 2.31 | 0.29 | 0.598 | ... | ... | ... |
 | Ours<br>(MobileNetV3Large) | 2.31 | 0.29 | 0.598 | ... | ... | ... |
