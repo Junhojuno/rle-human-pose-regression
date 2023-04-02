@@ -1,44 +1,56 @@
-# Human Pose Regression with Residual Log-likelihood Estimation with Tensorflow
+# Human Pose Regression with Tensorflow
+Human Pose Regression(HPR) is simple to estimate keypoints of human since it does not have any postprocess that transforms heatmaps to coordinates.
+HPR has a drawback that its accuracy is much lower than that of heatmap-based models. but recently, with flow-based model, HPR has so improved that it can be worth replace heatmap-based model.
 
 > [Human Pose Regression with Residual Log-likelihood Estimation](https://arxiv.org/abs/2107.11291) <br>
 > Jiefeng Li, Siyuan Bian, Ailing Zeng, Can Wang, Bo Pang, Wentao Liu, Cewu Lu <br>
 > ICCV 2021 Oral
 
-According to the official code, this repo is created for rewriting it with Tensorflow, at the same time, check the model efficiency on mobile.
+<br>
+
+this repo refered to the below research and its official repo, and looked into more about practicality.
 
 ## Results
 
 ### COCO Validation Set
+To compare with the official results, regression model(Tensorflow) has trained on MSCOCO and the official configuration.
+
 | Model | #Params<br>(M) | GFLOPs | AP | AP.5 | AP .75 | AP (M) | AP (L) | AR | AR .5 | AR .75 | AR (M) | AR (L) |
 | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: |
 | Benchmark<br>(ResNet50) | 23.6 | 4.0 | 0.713 | 0.889 | 0.783 | - | - | - | - | - | - | - |
 | Ours(ResNet50) | 23.6 | 3.78 | 0.695 | 0.903 | 0.769 | - | - | - | - | - | - | - |
   - AP is calculated on `flip_test=True`
 
-### On Small inputs
+### Look into more: lightweight backbones
+The backbones used in the paper are ResNet50 and HRNet which are not suitable on mobile devices. There are some tests applying lightweight backbones on this model. The backbones are like the below.
+  - Basically `MoibleNetV2`, which is the worldwide-used backbone network.
+  - `MobileNetV3-Large`, which is comparable with MobileNetV2.
+  - `GhostNetV2`, which has more params but, more efficient than any other backbones.
+
+| Model | #Params<br>(M) | GFLOPs | AP | model size(MB) | ms | memory access |
+| :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: |
+| Ours<br>(MobileNetV2) | 2.31 | 0.29 | 0.598 | ... | ... | ... |
+| Ours<br>(MobileNetV3Large) | 2.31 | 0.29 | 0.598 | ... | ... | ... |
+| Ours<br>(GhostNetV2) | 2.31 | 0.29 | 0.598 | ... | ... | ... |
+  - `AP` is calcualted `flip=False`, because the condition `flip` is not appropriate to mobile env.
+  - all tests on `iPhone XS`
+
+### Look into more: small inputs
 | Model | input size | #Params<br>(M) | GFLOPs | AP | AP.5 | AP .75 | AP (M) | AP (L) | AR | AR .5 | AR .75 | AR (M) | AR (L) |
 | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: |
 | Ours(ResNet50) | 128x96 | 23.6 | 3.78 | 0.695 | 0.903 | 0.769 | - | - | - | - | - | - | - |
 
-### On Lightweight Backbones
-The official did not care on running on mobile.
 
-| Model | #Params<br>(M) | GFLOPs | AP | model size(MB) | ms | memory access |
-| :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: |
-| Ours(MobileNetV2) | 2.31 | 0.29 | 0.598 | ... | ... | ... |
-  - `AP` is calcualted without flip, because it is not used in application(`flip_test=False` as default).
-  - all tests on `iPhone XS`
 
 <br>
 
 ## Setup
 
 ### environment
-After downloading `docker` and `nvidia-docker` and clone this repo, just run the below script on the cmd at current dir. <br>
-Feel free to name the image.
-  - tensorflow==2.11
+Before starting, `docker`, `nvidia-docker` should be set.  
+  - tensorflow==2.9.3
   - tensorflow-addons==0.19.0
-  - tensorflow_probability==0.19.0
+  - tensorflow_probability==0.17.0
 ```bash
 docker build -t rle:tf .
 ```
