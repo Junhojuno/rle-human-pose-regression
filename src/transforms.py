@@ -255,7 +255,7 @@ def preprocess(
         lambda: (img, bbox_center, kp)
     )
     # transform to the object's center
-    img, M = affine_transform(img, bbox_center, angle, scale, input_shape)
+    img, M = affine_transform(img, bbox_center, angle, scale, input_shape[:2])
 
     xy = kp[:, :2]
     xy = tf.transpose(tf.matmul(M[:, :2], xy, transpose_b=True)) + M[:, -1]
