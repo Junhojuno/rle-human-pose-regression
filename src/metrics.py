@@ -1,10 +1,10 @@
 import tensorflow as tf
 
 
-def calc_coord_accuracy(y_true, y_pred, heatmap_shape, thr: int = 0.5):
+def calc_coord_accuracy(y_true, y_pred, input_shape, thr: int = 0.5):
     pred_mu = y_pred.mu
     scale = tf.convert_to_tensor(
-        [heatmap_shape[1], heatmap_shape[0]],
+        [input_shape[1], input_shape[0]],
         pred_mu.dtype
     )
     pred_mu = (pred_mu + 0.5) * scale
