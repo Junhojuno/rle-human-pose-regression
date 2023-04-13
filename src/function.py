@@ -22,7 +22,7 @@ from src.eval import (
 
 
 @tf.function
-def train(inputs, model, criterion, optimizer, args):
+def train(inputs, model, criterion, optimizer, input_shape):
     images, targets = inputs
 
     with tf.GradientTape() as tape:
@@ -36,7 +36,7 @@ def train(inputs, model, criterion, optimizer, args):
         zip(gradients, model.trainable_variables)
     )
     acc = calc_coord_accuracy(
-        targets, pred, args.DATASET.COMMON.OUTPUT_SHAPE
+        targets, pred, input_shape
     )
     return loss, acc
 
