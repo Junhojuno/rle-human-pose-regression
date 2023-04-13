@@ -242,16 +242,16 @@ def PoseRegModel(
     inputs = Input(input_shape)
     x = build_backbone(backbone_type, input_shape)(inputs)
     x = layers.GlobalAveragePooling2D()(x)
-    x_mu = layers.Dense(num_keypoints * 2)(x)
-    x_sigma = layers.Dense(num_keypoints * 2)(x)
+
+    # x_mu = layers.Dense(num_keypoints * 2)(x)
+    # x_sigma = layers.Dense(num_keypoints * 2)(x)
+    x_mu = Linear(num_keypoints * 2, name='linear_mu')(x)
+    x_sigma = Linear(num_keypoints * 2, use_norm=False, name='linear_sigma')(x)
 
     x_mu = layers.Reshape([num_keypoints, 2])(x_mu)
     x_sigma = layers.Reshape([num_keypoints, 2])(x_sigma)
     x_sigma = sigmoid_fn(x_sigma)
 
-    # x_scores = 1 - x_sigma
-    # x_scores = tf.math.reduce_mean(x_scores, -1, keepdims=True)
-    # return Model(inputs, [x_mu, x_sigma, x_scores], name=name)
     return Model(inputs, [x_mu, x_sigma], name=name)
 
 
