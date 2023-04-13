@@ -4,6 +4,7 @@ import os
 import argparse
 import time
 import tensorflow as tf
+import numpy as np
 
 import wandb
 
@@ -32,16 +33,11 @@ def define_argparser():
 
 
 def main():
-    tf.keras.backend.clear_session()
     tf.random.set_seed(0)
+    np.random.seed(0)
 
     cfg = define_argparser()
     args = parse_yaml(cfg.config)
-
-    # args.DATASET.COMMON.OUTPUT_SHAPE = [
-    #     args.DATASET.COMMON.INPUT_SHAPE[0] // 4,
-    #     args.DATASET.COMMON.INPUT_SHAPE[1] // 4
-    # ]
 
     cwd = Path('./').resolve()
     args.WANDB.NAME = \
@@ -156,7 +152,13 @@ def main():
         train_loss, train_acc, train_n_batches = 0.0, 0.0, 0.0
         start_time = time.time()
         for inputs in train_ds:
-            loss, acc = train(inputs, model, criterion, optimizer, args)
+            loss, acc = train(
+                inputs,
+                model,
+                criterion,
+                optimizer,
+                args.DATASET.COMMON.INPUT_SHAPE
+            )
             train_loss += loss
             train_acc += acc
             train_n_batches += 1
@@ -198,7 +200,7 @@ def main():
                 eval_ds,
                 args.DATASET.COMMON.INPUT_SHAPE,
                 str(cwd.parent / args.EVAL.COCO_JSON),
-                eval_name,
+                f'{eval_name}_flip=False',
                 logger.info,
                 use_flip=False
             )
@@ -220,7 +222,7 @@ def main():
         eval_ds,
         args.DATASET.COMMON.INPUT_SHAPE,
         str(cwd.parent / args.EVAL.COCO_JSON),
-        eval_name,
+        f'{eval_name}_flip=True',
         logger.info,
         use_flip=True
     )
