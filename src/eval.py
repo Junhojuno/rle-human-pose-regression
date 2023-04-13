@@ -50,7 +50,7 @@ def print_coco_eval(
         + " ".join(["| {}".format(name) for name in names])
         + " |"
     )
-    print_fn("|---" * (num_values + 1) + "|")
+    print_fn("|-------" * (num_values + 1) + "|")
 
     if len(full_arch_name) > 15:
         full_arch_name = full_arch_name[:8] + "..."
