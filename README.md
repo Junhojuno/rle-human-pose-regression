@@ -24,15 +24,14 @@ To compare with the official results, regression model(Tensorflow) has trained o
 ### Look into more: lightweight backbones
 The backbones used in the paper are ResNet50 and HRNet which are not suitable on mobile devices. There are some tests applying lightweight backbones on this model. The backbones are like the below.
   - Basically `MoibleNetV2`, which is the worldwide-used backbone network.
-  - `MobileNetV3-Large`, which is comparable with MobileNetV2.
+  - `EfficientNet-B0`, which has a considerable score with fast inference.
   - `GhostNetV2`, which has more params but, more efficient than any other backbones.
 
 | Model | #Params<br>(M) | GFLOPs | AP | model size<br>(MB) | latency<br>(ms) | memory access |
 | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: |
-| Ours<br>(EfficientNet-B0) | 2.31 | 0.29 | 0.598 | ... | ... | ... |
-| Ours<br>(MobileNetV2) | 2.31 | 0.29 | 0.598 | ... | ... | ... |
-| Ours<br>(MobileNetV3Large) | 2.31 | 0.29 | 0.598 | ... | ... | ... |
-| Ours<br>(GhostNetV2 1.0x) | 2.31 | 0.29 | 0.598 | ... | ... | ... |
+| Ours<br>(MobileNetV2)     | 2.31 | 0.2935 | 0.598 | ... | ... | ... |
+| Ours<br>(EfficientNet-B0) | 4.09 | 0.3854 | ????? | ... | ... | ... |
+| Ours<br>(GhostNetV2 1.0x) | 3.71 | 0.1647 | ????? | ... | ... | ... |
   - `AP` is calcualted `flip=False`, because the `flip` inference is not used on mobile.
   - mobile test based on iOS(`iPhone XS`)
 
@@ -85,15 +84,8 @@ python train.py -c config/256x192_res50_regress-flow.yaml
 ```
 
 ## TO-DO
-- [x] hydra 대신 일반 yaml 파일로 학습 파이프라인 수정
-- [x] tfrecord 만드는 코드 추가
-- [x] 현재 모델들의 #params, GFLOPs 확인하여 기록
-- [ ] 모델이 고정되었을때 성능을 높일 수 있는 방법 모색
-  - [x] albumentation
-  - [ ] different optimizers
-  - [ ] ema
-- [ ] 동일한 성능 재현을 위한 seed 고정 방법 찾아보기
-- [ ] 모바일 성능 비교할 벤치마크 모델 선정하기
+- [ ] 다양한 backbone에 대해 학습 진행
+- [ ] 모바일(iOS) 배포. 
 
 
 ## References
