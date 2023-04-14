@@ -18,7 +18,7 @@ To compare with the official results, regression model(Tensorflow) has trained o
 | Model | #Params<br>(M) | GFLOPs | AP | AP.5 | AP .75 | AP (M) | AP (L) | AR | AR .5 | AR .75 | AR (M) | AR (L) |
 | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: |
 | Benchmark<br>(ResNet50) | 23.6 | 4.0 | 0.713 | 0.889 | 0.783 | - | - | - | - | - | - | - |
-| Ours(ResNet50) | 23.6 | 3.78 | 0.695 | 0.903 | 0.769 | - | - | - | - | - | - | - |
+| Ours(ResNet50) | 23.6 | 3.78 | 0.694 | 0.904 | 0.760 | 0.668 | 0.736 | 0.727 | 0.912 | 0.786 | 0.695 | 0.776 |
   - AP is calculated on `flip_test=True`
 
 ### Look into more: lightweight backbones
@@ -29,17 +29,17 @@ The backbones used in the paper are ResNet50 and HRNet which are not suitable on
 
 | Model | #Params<br>(M) | GFLOPs | AP | model size<br>(MB) | latency<br>(ms) | memory access |
 | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: |
+| Ours<br>(EfficientNet-B0) | 2.31 | 0.29 | 0.598 | ... | ... | ... |
 | Ours<br>(MobileNetV2) | 2.31 | 0.29 | 0.598 | ... | ... | ... |
 | Ours<br>(MobileNetV3Large) | 2.31 | 0.29 | 0.598 | ... | ... | ... |
-| Ours<br>(GhostNetV2) | 2.31 | 0.29 | 0.598 | ... | ... | ... |
-  - `AP` is calcualted `flip=False`, because the condition `flip` is not appropriate to mobile env.
-  - all tests on `iPhone XS`
+| Ours<br>(GhostNetV2 1.0x) | 2.31 | 0.29 | 0.598 | ... | ... | ... |
+  - `AP` is calcualted `flip=False`, because the `flip` inference is not used on mobile.
+  - mobile test based on iOS(`iPhone XS`)
 
 ### Look into more: small inputs
 | Model | input size | #Params<br>(M) | GFLOPs | AP | AP.5 | AP .75 | AP (M) | AP (L) | AR | AR .5 | AR .75 | AR (M) | AR (L) |
 | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: |
-| Ours(ResNet50) | 128x96 | 23.6 | 3.78 | 0.695 | 0.903 | 0.769 | - | - | - | - | - | - | - |
-
+| Ours(ResNet50) | 128x96 | 23.6 | 3.78 | 0.694 | 0.904 | 0.760 | 0.668 | 0.736 | 0.727 | 0.912 | 0.786 | 0.695 | 0.776 |
 
 
 <br>
