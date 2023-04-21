@@ -1,5 +1,5 @@
 import math
-from typing import List, Tuple
+from typing import List
 import tensorflow as tf
 import tensorflow_addons as tfa
 
