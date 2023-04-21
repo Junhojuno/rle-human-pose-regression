@@ -31,9 +31,9 @@ The backbones used in the paper are ResNet50 and HRNet which are not suitable on
 | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: |
 | Ours<br>(MobileNetV2)     | 2.31 | 0.2935 | 0.600 | ... | ... | ... |
 | Ours<br>(EfficientNet-B0) | 4.09 | 0.3854 | ????? | ... | ... | ... |
-| Ours<br>(GhostNetV2 1.0x) | 3.71 | 0.1647 | ????? | ... | ... | ... |
+| Ours<br>(GhostNetV2 1.0x) | 3.71 | 0.1647 | 0.624 | ... | ... | ... |
   - `AP` is calcualted `flip=False`, because the `flip` inference is not used on mobile.
-  - mobile test based on iOS(`iPhone XS`)
+  - latency and memory access are checked on `iPhone XS`.
 
 ### Look into more: small inputs
 | Model | input size | #Params<br>(M) | GFLOPs | AP | AP.5 | AP .75 | AP (M) | AP (L) | AR | AR .5 | AR .75 | AR (M) | AR (L) |
