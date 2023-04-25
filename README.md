@@ -37,9 +37,9 @@ After training, something noticable is that there is a small amount of differenc
 
 | Model | #Params<br>(M) | GFLOPs | AP | model size<br>(MB) | latency<br>(ms) | memory access |
 | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: |
-| Ours<br>(MobileNetV2)     | 2.31 | 0.2935 | 0.600 | ... | ... | ... |
-| Ours<br>(EfficientNet-B0) | 4.09 | 0.3854 | 0.665 | ... | ... | ... |
-| Ours<br>(GhostNetV2 1.0x) | 3.71 | 0.1647 | 0.624 | ... | ... | ... |
+| Ours<br>(MobileNetV2)     | 2.31 | 0.2935 | 0.600 | 4.7 | ... | ... |
+| Ours<br>(EfficientNet-B0) | 4.09 | 0.3854 | 0.665 | 8.3 | ... | ... |
+| Ours<br>(GhostNetV2 1.0x) | 3.71 | 0.1647 | 0.624 | 7.6 | ... | ... |
   - `AP` is calcualted `flip=False`, because the `flip` inference is not used on mobile.
   - latency and memory access are checked on `iPhone XS`.
 
