@@ -14,7 +14,7 @@ HPR has a drawback that its accuracy is much lower than that of heatmap-based mo
 
 <br>
 
-this repo refered to the below research and its official repo, and looked into more about practicality.
+Looking into [the officials](https://github.com/Jeff-sjtu/res-loglikelihood-regression), there are only basic sources for reproducing scores written on the paper. Ummm...those are also important but practical experiments should be executed, such as test with mobile backbone, mobile deployment, ... etc. Let's have these!
 
 ## Results
 
