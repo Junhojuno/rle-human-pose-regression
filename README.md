@@ -33,6 +33,8 @@ The backbones used in the paper are ResNet50 and HRNet which are not suitable on
   - `EfficientNet-B0`, which has a considerable score with fast inference.
   - `GhostNetV2`, which has more params but, more efficient than any other backbones.
 
+After training, something noticable is that there is a small amount of difference between `flip=true` and `flip=false`, which is much lower than that of heatmap-based models.
+
 | Model | #Params<br>(M) | GFLOPs | AP | model size<br>(MB) | latency<br>(ms) | memory access |
 | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: |
 | Ours<br>(MobileNetV2)     | 2.31 | 0.2935 | 0.600 | ... | ... | ... |
