@@ -1,10 +1,16 @@
 # Human Pose Regression with Tensorflow
+
 Human Pose Regression(HPR) is simple to estimate keypoints of human since it does not have any postprocess that transforms heatmaps to coordinates.
 HPR has a drawback that its accuracy is much lower than that of heatmap-based models. but recently, with flow-based model, HPR has so improved that it can be worth replace heatmap-based model.
 
 > [Human Pose Regression with Residual Log-likelihood Estimation](https://arxiv.org/abs/2107.11291) <br>
 > Jiefeng Li, Siyuan Bian, Ailing Zeng, Can Wang, Bo Pang, Wentao Liu, Cewu Lu <br>
 > ICCV 2021 Oral
+
+<p align="center">
+  <img src="https://user-images.githubusercontent.com/38845662/234257766-da4d0cb7-908e-4fe0-84ee-dabfbd2c17ec.gif">
+  <img src="https://user-images.githubusercontent.com/38845662/234259627-cc495d62-2682-4ff2-a4e1-9eb63d887b2d.gif">
+</p>
 
 <br>
 
