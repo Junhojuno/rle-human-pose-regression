@@ -41,7 +41,7 @@ After training, something noticable is that there is a small amount of differenc
 | Ours<br>(EfficientNet-B0) | 4.09 | 0.3854 | 0.665 | 8.3 | ... | ... |
 | Ours<br>(GhostNetV2 1.0x) | 3.71 | 0.1647 | 0.624 | 7.6 | ... | ... |
   - `AP` is calcualted `flip=False`, because the `flip` inference is not used on mobile.
-  - latency and memory access are checked on `iPhone XS`.
+  - The model is tested on Android device.
 
 ### Look into more: small inputs
 | Model | input size | #Params<br>(M) | GFLOPs | AP | AP.5 | AP .75 | AP (M) | AP (L) | AR | AR .5 | AR .75 | AR (M) | AR (L) |
@@ -92,8 +92,8 @@ python train.py -c config/256x192_res50_regress-flow.yaml
 ```
 
 ## TO-DO
-- [ ] 다양한 backbone에 대해 학습 진행
-- [ ] 모바일(iOS) 배포. 
+- [ ] low-resolution에서의 모델 성능 측정
+- [ ] 모바일 
 
 
 ## References
