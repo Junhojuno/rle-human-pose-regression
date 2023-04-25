@@ -21,7 +21,6 @@ def build_backbone(
         backbone = ResNet50Hybrid(include_top=False, input_shape=input_shape)
     elif backbone_type == 'efficientnet':
         backbone = EfficientNetB0(include_top=False, input_shape=input_shape)
-        # backbone = EfficientNetB0TF(include_top=False, input_shape=input_shape)
     elif backbone_type == 'ghostnetv2':
         backbone = GhostNetV2(
             include_top=False,
