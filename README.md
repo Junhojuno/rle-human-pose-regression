@@ -35,13 +35,14 @@ The backbones used in the paper are ResNet50 and HRNet which are not suitable on
 
 After training, something noticable is that there is a small amount of difference between `flip=true` and `flip=false`, which is much lower than that of heatmap-based models.
 
-| Model | #Params<br>(M) | GFLOPs | AP | model size<br>(MB) | latency<br>(ms) | memory access |
-| :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: |
-| Ours<br>(MobileNetV2)     | 2.31 | 0.2935 | 0.600 | 4.7 | 10~11 | ... |
-| Ours<br>(EfficientNet-B0) | 4.09 | 0.3854 | 0.665 | 8.3 | 5~6 | ... |
-| Ours<br>(GhostNetV2 1.0x) | 3.71 | 0.1647 | 0.624 | 7.6 | 9~10 | ... |
+| Model | #Params<br>(M) | GFLOPs | AP | model size<br>(MB) | latency<br>(ms) |
+| :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: |
+| Ours<br>(MobileNetV2)     | 2.31 | 0.2935 | 0.600 | 4.7 | 10~11 |
+| Ours<br>(EfficientNet-B0) | 4.09 | 0.3854 | 0.665 | 8.3 | 5~6 |
+| Ours<br>(GhostNetV2 1.0x) | 3.71 | 0.1647 | 0.624 | 7.6 | 9~10 |
   - `AP` is calcualted `flip=False`, because the `flip` inference is not used on mobile.
-  - The model is tested on Android device.
+  - The model is tested on `Galaxy Tab A7` with `num_threads=4`.
+  - GLOPs has no effect on FPS more than size of model and number of parameters in model 
 
 ### Look into more: small inputs
 | Model | input size | #Params<br>(M) | GFLOPs | AP | AP.5 | AP .75 | AP (M) | AP (L) | AR | AR .5 | AR .75 | AR (M) | AR (L) |
