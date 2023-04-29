@@ -42,7 +42,8 @@ After training, something noticable is that there is a small amount of differenc
 | Ours<br>(GhostNetV2 1.0x) | 3.71 | 0.1647 | 0.624 | 7.6 | 9~10 |
   - `AP` is calcualted `flip=False`, because the `flip` inference is not used on mobile.
   - The model is tested on `Galaxy Tab A7` with `num_threads=4`.
-  - GLOPs has no effect on FPS more than size of model and number of parameters in model 
+  - GLOPs has no effect on FPS more than size of model and number of parameters in model.
+  - 
 
 ### Look into more: small inputs
 | Model | input size | #Params<br>(M) | GFLOPs | AP | AP.5 | AP .75 | AP (M) | AP (L) | AR | AR .5 | AR .75 | AR (M) | AR (L) |
