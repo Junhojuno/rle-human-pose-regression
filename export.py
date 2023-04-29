@@ -75,8 +75,14 @@ def create_deploy_model(args):
         args.backbone
     )
     model.load_weights(args.weights)
-    outputs = preprocess_layer(inputs)
-    outputs = model(outputs)
+    output = preprocess_layer(inputs)
+    output_mu, output_sigma = model(output)
+    output_scores = tf.math.reduce_mean(
+        1.0 - output_sigma,
+        axis=-1,
+        keepdims=True
+    )
+    outputs = layers.Concatenate()([output_mu, output_scores])
     return Model(inputs, outputs, name=f'rle_{args.backbone}_deploy')
 
 
