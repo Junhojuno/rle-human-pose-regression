@@ -56,10 +56,7 @@ After training, something noticable is that there is a small amount of differenc
 ## Setup
 
 ### environment
-Before starting, `docker`, `nvidia-docker` should be set.  
-  - tensorflow==2.9.3
-  - tensorflow-addons==0.19.0
-  - tensorflow_probability==0.17.0
+All the things in this repo are based on Ubuntu 18.04, and before starting, `docker`, `nvidia-docker` should be installed.
 ```bash
 docker build -t rle:tf .
 ```
@@ -93,9 +90,16 @@ python write_tfrecord.py
 python train.py -c config/256x192_res50_regress-flow.yaml
 ```
 
+### tflite
+```python
+python export.py -b ${BACKBONE_TYPE} -w ${WEIGHT_PATH}
+
+# e.g.
+python export.py -b resnet50 -w results/resnet50/ckpt/best_model.tf
+```
+
 ## TO-DO
 - [ ] low-resolution에서의 모델 성능 측정
-- [ ] 모바일 
 
 
 ## References
