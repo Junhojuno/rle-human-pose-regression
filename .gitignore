@@ -8,6 +8,7 @@ tflites/
 legacy/
 *test*
 *backup*
+*copy*
 
 # jpeg / mp4
 *.jpg
@@ -18,13 +19,6 @@ samples/
 
 # models
 models/
-
-# test
-test*.py
-test*.*
-
-# yaml
-*.yaml
 
 # results
 results/

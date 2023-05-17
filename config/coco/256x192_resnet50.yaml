@@ -1,0 +1,66 @@
+DATASET:
+  NAME: mscoco
+  TRAIN:
+    PATTERN: tfrecords/train/*.tfrecord
+    EXAMPLES: 149544
+  VAL:
+    PATTERN: tfrecords/val/*.tfrecord
+    EXAMPLES: 6340
+  COMMON:
+    INPUT_SHAPE:
+      - 256
+      - 192
+      - 3
+    K: 17
+    IMAGE_NORM: true
+    MEANS: # imagenet means RGB
+      - 0.485
+      - 0.456
+      - 0.406
+    STDS:
+      - 0.229
+      - 0.224
+      - 0.225
+    SIGMA: 2.0
+
+AUG:
+  KP_FLIP: [0, 2, 1, 4, 3, 6, 5, 8, 7, 10, 9, 12, 11, 14, 13, 16, 15] # coco
+  FLIP_PROB: 0.5
+  ROT_FACTOR: 45
+  ROT_PROB: 0.6
+  SCALE_FACTOR: 0.25
+  KP_UPPER: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  HALF_BODY_PROB: 0.3
+  HALF_BODY_MIN_KP: 8
+  ALBUM: false
+
+MODEL:
+  NAME: rle_model
+  BACKBONE: resnet50
+
+TRAIN:
+  EPOCHS: 270
+  LR: 0.001
+  BATCH_SIZE: 32
+  PRETRAINED: false
+  LR_FACTOR: 0.1
+  LR_EPOCHS:
+    - 170
+    - 200
+
+EVAL:
+  DO_EVAL: true
+  BATCH_SIZE: 32
+  EVAL_TERM: 5
+  COCO_JSON: datasets/mscoco/annotations/person_keypoints_val2017.json
+  FLIP_TEST: true
+
+WANDB:
+  USE: true
+  PROJECT: rle-pose
+  SUBTITLE: basic_coco_linear
+  NAME: null
+
+OUTPUT:
+  DIR: null
+  CKPT: null
