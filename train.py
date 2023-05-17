@@ -42,11 +42,14 @@ def main():
     cwd = Path('./').resolve()
     args.WANDB.NAME = \
         '{dataset}/{exp_title}/{model}/'\
-        '{backbone}/bs{bs}_lr{lr}_s{sigma}_sf_{sf}_r{rot}'\
+        '{height}x{width}_{backbone}/'\
+        'bs{bs}_lr{lr}_s{sigma}_sf_{sf}_r{rot}'\
         .format(
             dataset=args.DATASET.NAME,
             exp_title=args.WANDB.SUBTITLE,
             model=args.MODEL.NAME,
+            height=args.DATASET.COMMON.INPUT_SHAPE[0],
+            width=args.DATASET.COMMON.INPUT_SHAPE[1],
             backbone=args.MODEL.BACKBONE,
             bs=args.TRAIN.BATCH_SIZE,
             lr=args.TRAIN.LR,
