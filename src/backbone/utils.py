@@ -15,7 +15,7 @@ def get_weights_from_remote(backbone_name: str, filename: str) -> str:
     """
     backbone_names:
         GhostNetV2 -> ghostnetv2_1.0_imagenet.h5
-        TinyNetA -> tinynet_a_imagenet.h5
+        EfficientNetLite0 -> efficientnet_lite0.h5
     """
     # cwd has been changed because of hydra.
     # so, more reliable cwd is needed.

@@ -5,6 +5,8 @@ import tensorflow as tf
 from tensorflow.keras import layers
 from tensorflow.keras import Model, Input
 
+from src.backbone.utils import get_weights_from_remote
+
 
 BLOCK_SETTING = [
     # repeat|kernal_size|stride|expand|input|output|se_ratio
@@ -55,7 +57,7 @@ def round_repeats(
     repeats: int,
     multiplier: float,
     skip=False
-):
+) -> int:
     """Round number of filters based on depth multiplier."""
     if skip or not multiplier:
         return repeats
@@ -70,7 +72,7 @@ def inverted_bottleneck(
     strides: int,
     survivial_prob: float = 0.8,
     name: str = 'block'
-):
+) -> tf.Tensor:
     """Mobile Inverted Residual Bottleneck"""
     x = inputs
     in_channels = x.shape[-1]
@@ -131,7 +133,7 @@ def EfficientNetLite(
     num_classes: int = 1000,
     include_top: bool = False,
     name: str = 'efficientnet-lite'
-):
+) -> Model:
     inputs = Input(input_shape)
 
     # stem part
@@ -183,7 +185,17 @@ def EfficientNetLite(
             kernel_constraint=dense_kernel_initializer(),
             name='head/fc'
         )(x)
-    return Model(inputs, x, name=name)
+
+    model = Model(inputs, x, name=name)
+
+    if name.endswith('lite0'):
+        filename = 'efficientnet_lite0.h5'
+        pretrained_weights = get_weights_from_remote(
+            'efficientnet_lite0', filename
+        )
+        model.load_weights(pretrained_weights, by_name=True)
+
+    return model
 
 
 def EfficientNetLite0(
