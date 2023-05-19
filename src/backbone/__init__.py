@@ -26,7 +26,7 @@ def build_backbone(
             input_shape=input_shape,
             width_multiplier=1.0,
         )
-    elif backbone_type == 'efficientnet_lite':
+    elif backbone_type == 'efficientnet-lite':
         backbone = EfficientNetLite0(
             include_top=False,
             input_shape=input_shape
