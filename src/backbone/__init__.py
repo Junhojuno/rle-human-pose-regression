@@ -23,17 +23,21 @@ def build_backbone(
     elif backbone_type.startswith('resnet50-pf'):
         backbone = ResNet50Hybrid(include_top=False, input_shape=input_shape)
     elif backbone_type.startswith('efficientnet'):
-        backbone = EfficientNetB0(include_top=False, input_shape=input_shape)
+        if backbone_type.endswith('lite'):
+            backbone = EfficientNetLite0(
+                include_top=False,
+                input_shape=input_shape
+            )
+        else:
+            backbone = EfficientNetB0(
+                include_top=False,
+                input_shape=input_shape
+            )
     elif backbone_type.startswith('ghostnetv2'):
         backbone = GhostNetV2(
             include_top=False,
             input_shape=input_shape,
             width_multiplier=1.0,
-        )
-    elif backbone_type.startswith('efficientnet-lite'):
-        backbone = EfficientNetLite0(
-            include_top=False,
-            input_shape=input_shape
         )
     elif backbone_type.startswith('mobilenetv3-large'):
         alpha = float(backbone_type.split('_')[1])
