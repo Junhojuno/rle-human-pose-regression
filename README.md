@@ -21,10 +21,10 @@ Looking into [the officials](https://github.com/Jeff-sjtu/res-loglikelihood-regr
 ### COCO Validation Set
 To compare with the official results, regression model(Tensorflow) has trained on MSCOCO and the official configuration.
 
-| Model | #Params<br>(M) | GFLOPs | AP | AP.5 | AP .75 | AP (M) | AP (L) | AR | AR .5 | AR .75 | AR (M) | AR (L) |
-| :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: |
-| Benchmark<br>(ResNet50) | 23.6 | 4.0 | 0.713 | 0.889 | 0.783 | - | - | - | - | - | - | - |
-| Ours(ResNet50) | 23.6 | 3.78 | 0.694 | 0.904 | 0.760 | 0.668 | 0.736 | 0.727 | 0.912 | 0.786 | 0.695 | 0.776 |
+| Model | input shape | #Params<br>(M) | GFLOPs | AP | AP.5 | AP .75 | AP (M) | AP (L) | AR | AR .5 | AR .75 | AR (M) | AR (L) |
+| :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: |
+| Benchmark<br>(ResNet50) | 256x192 | 23.6 | 4.0 | 0.713 | 0.889 | 0.783 | - | - | - | - | - | - | - |
+| Ours(ResNet50) | 256x192 | 23.6 | 3.78 | 0.694 | 0.904 | 0.760 | 0.668 | 0.736 | 0.727 | 0.912 | 0.786 | 0.695 | 0.776 |
   - AP is calculated on `flip_test=True`
 
 ### Look into more: lightweight backbones
@@ -35,21 +35,22 @@ The backbones used in the paper are ResNet50 and HRNet which are not suitable on
 
 After training, something noticable is that there is a small amount of difference between `flip=true` and `flip=false`, which is much lower than that of heatmap-based models.
 
-| Model | #Params<br>(M) | GFLOPs | AP | model size<br>(MB) | latency<br>(ms) |
-| :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: |
-| Ours<br>(MobileNetV2)     | 2.31 | 0.2935 | 0.600 | 4.7 | 10~11 |
-| Ours<br>(EfficientNet-B0) | 4.09 | 0.3854 | 0.665 | 8.3 | 5~6 |
-| Ours<br>(GhostNetV2 1.0x) | 3.71 | 0.1647 | 0.624 | 7.6 | 9~10 |
+| Model | input shape | #Params<br>(M) | GFLOPs | AP | model size<br>(MB) | latency<br>(fps) |
+| :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: |
+| Ours<br>(MobileNetV2)     | 256x192 | 2.31 | 0.2935 | 0.600 | 4.7 | 10~11 |
+| Ours<br>(EfficientNet-B0) | 256x192 | 4.09 | 0.3854 | 0.665 | 8.3 | 5~6 |
+| Ours<br>(GhostNetV2 1.0x) | 256x192 | 3.71 | 0.1647 | 0.624 | 7.6 | 9~10 |
   - `AP` is calcualted `flip=False`, because the `flip` inference is not used on mobile.
   - The model is tested on `Galaxy Tab A7` with `num_threads=4`.
   - GLOPs has no effect on FPS more than size of model and number of parameters in model.
-  - 
 
 ### Look into more: small inputs
-| Model | input size | #Params<br>(M) | GFLOPs | AP | AP.5 | AP .75 | AP (M) | AP (L) | AR | AR .5 | AR .75 | AR (M) | AR (L) |
-| :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: |
-| Ours(ResNet50) | 128x96 | 23.6 | 3.78 | - | - | - | - | - | - | - | - | - | - |
-
+| Model | input shape | #Params<br>(M) | GFLOPs | fps | AP | AP.5 | AP .75 | AP (M) | AP (L) | AR | AR .5 | AR .75 | AR (M) | AR (L) |
+| :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: |
+| GhostNetV2 | 224x160 | 3.71 | 0.1187 | 10~11 | 0.597 | 0.859 | 0.670 | 0.574 | 0.638 | 0.635 | 0.871 | 0.701 | 0.604 | 0.681 |
+| EfficientNetB0 | 224x160 | 4.09 | 0.2810 | 6~7 | 0.645 | 0.882 | 0.717 | 0.623 | 0.680 | 0.680 | 0.893 | 0.746 | 0.651 | 0.723 |
+| GhostNetV2 | 192x128 | 3.71 | 0.0832 | 12~13 | 0.565 | 0.839 | 0.627 | 0.549 | 0.594 | 0.605 | 0.853 | 0.666 | 0.580 | 0.643 |
+| EfficientNetB0 | 192x128 | 4.09 | 0.1929 | 8~9 | 0.608 | 0.862 | 0.675 | 0.586 | 0.644 | 0.645 | 0.875 | 0.710 | 0.614 | 0.690 |
 
 <br>
 
@@ -90,7 +91,7 @@ python write_tfrecord.py
 python train.py -c config/256x192_res50_regress-flow.yaml
 ```
 
-### tflite
+### export
 ```python
 python export.py -b ${BACKBONE_TYPE} -w ${WEIGHT_PATH}
 
@@ -98,8 +99,11 @@ python export.py -b ${BACKBONE_TYPE} -w ${WEIGHT_PATH}
 python export.py -b resnet50 -w results/resnet50/ckpt/best_model.tf
 ```
 
-## TO-DO
-- [ ] low-resolution에서의 모델 성능 측정
+## More to improve accuracy
+- [use other data and fine-tuning](https://arxiv.org/abs/2002.00537)
+
+## More to get faster
+- [lower FLOPs, better FLOPS](https://arxiv.org/abs/2303.03667)
 
 
 ## References
