@@ -45,6 +45,7 @@ After training, something noticable is that there is a small amount of differenc
   - GLOPs has no effect on FPS more than size of model and number of parameters in model.
 
 ### Look into more: small inputs
+Since `Galaxy Tab A7` is less powerful than recent devices or iOS pads, it is hard to make its latency realtime-level even if our models are so lightweight. I think those models has more less latency on `Galaxy Tab S7` above or `iPad Pro`s.
 | Model | input shape | #Params<br>(M) | GFLOPs | fps | AP | AP.5 | AP .75 | AP (M) | AP (L) | AR | AR .5 | AR .75 | AR (M) | AR (L) |
 | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: |
 | GhostNetV2 | 224x160 | 3.71 | 0.1187 | 10~11 | 0.597 | 0.859 | 0.670 | 0.574 | 0.638 | 0.635 | 0.871 | 0.701 | 0.604 | 0.681 |
@@ -81,7 +82,19 @@ root
 
 ### data
 Train & evaluation are operated on tfrecord files. so download the raw dataset form https://cocodataset.org and convert it to `.tfrecord`. <br>
-According to the dir tree mentioned above, it is easy to convert, just run the code below. If not following the tree, should change the current dir using `-c` option on command line.
+```bash
+# after running command below, `tfrecords` directory is made.
+root
+├── datasets
+│   └── mscoco
+│        ├── annotations
+│        └── images
+│        └── **tfrecords**
+├── $project_dir
+│   └── ...
+└── ...
+``` 
+According to the dir tree mentioned above, it is easy to convert, just run the code below. If not following the tree, should change the current dir using `-c` option on command line. 
 ```python
 python write_tfrecord.py
 ```
