@@ -35,11 +35,11 @@ The backbones used in the paper are ResNet50 and HRNet which are not suitable on
 
 After training, something noticable is that there is a small amount of difference between `flip=true` and `flip=false`, which is much lower than that of heatmap-based models.
 
-| Model | input shape | #Params<br>(M) | GFLOPs | AP | model size<br>(MB) | latency<br>(fps) |
-| :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: |
-| Ours<br>(MobileNetV2)     | 256x192 | 2.31 | 0.2935 | 0.600 | 4.7 | 10~11 |
-| Ours<br>(EfficientNet-B0) | 256x192 | 4.09 | 0.3854 | 0.665 | 8.3 | 5~6 |
-| Ours<br>(GhostNetV2 1.0x) | 256x192 | 3.71 | 0.1647 | 0.624 | 7.6 | 9~10 |
+| Model | input shape | #Params<br>(M) | GFLOPs | model size<br>(MB) | latency<br>(fps) | AP(flip=True) | AP(flip=False) |
+| :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: | :-------------: |
+| Ours<br>(MobileNetV2)     | 256x192 | 2.31 | 0.2935 | 4.7 | 10~11 | 0.614 | 0.600 |
+| Ours<br>(EfficientNet-B0) | 256x192 | 4.09 | 0.3854 | 8.3 | 5~6 | 0.671 | 0.665 |
+| Ours<br>(GhostNetV2 1.0x) | 256x192 | 3.71 | 0.1647 | 7.6 | 9~10 | 0.632 | 0.624 |
   - `AP` is calcualted `flip=False`, because the `flip` inference is not used on mobile.
   - The model is tested on `Galaxy Tab A7` with `num_threads=4`.
   - GLOPs has no effect on FPS more than size of model and number of parameters in model.
